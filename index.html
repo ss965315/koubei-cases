@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>【口碑案例優化】各店案例管理</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -25,13 +26,22 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text
 button,input,select,textarea{font-family:inherit}
 [hidden]{display:none!important}
 
+/* login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.08);width:100%;max-width:380px;padding:30px 28px 24px}
+.login-logo{font-size:30px;text-align:center}
+.login-title{font-size:16px;font-weight:700;color:var(--accent);text-align:center;margin:6px 0 22px}
+.login-card .fg input{font-size:14px;padding:10px 12px}
+.login-card .btn{width:100%;justify-content:center;padding:10px;font-size:14px;margin-top:6px}
+.login-err{color:var(--pink);font-size:12px;min-height:18px;margin-top:10px;text-align:center}
+.login-note{color:var(--text3);font-size:11px;text-align:center;margin-top:12px;line-height:1.7}
+
 /* header */
 .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;min-height:50px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.hlogo{display:flex;align-items:center;gap:8px}
+.hlogo{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .htitle{font-size:13px;font-weight:700;color:var(--accent)}
 .hsub{font-size:10px;color:var(--text3);margin-left:8px}
 .hright{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0}
-.role-sel{font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text2)}
 
 /* tabs */
 .branch-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 20px;overflow-x:auto;position:sticky;top:50px;z-index:190}
@@ -67,6 +77,8 @@ button,input,select,textarea{font-family:inherit}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn-primary:hover:not(:disabled){background:#1F3529}
+.btn-pub{background:var(--brand-red-dark);color:#fff;border-color:var(--brand-red-dark)}
+.btn-pub:hover:not(:disabled){background:#A01A1F}
 .btn-danger{color:var(--pink)}
 .btn-danger:hover:not(:disabled){background:var(--pink-bg)}
 .btn-sm{padding:4px 9px;font-size:11px}
@@ -77,7 +89,7 @@ button,input,select,textarea{font-family:inherit}
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{background:var(--surface2);padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap;text-align:left}
-td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
 tbody tr:last-child td{border-bottom:none}
 .case-table tbody tr{cursor:pointer}
 .case-table tbody tr:hover td{background:#FAFAF8}
@@ -85,10 +97,9 @@ tbody tr:last-child td{border-bottom:none}
 .tdc,.thc{text-align:center}
 .mono{font-family:var(--mono)}
 code{font-family:var(--mono);font-size:11px;color:var(--text2)}
-.thumb{width:40px;height:40px;border-radius:5px;object-fit:cover;display:block;border:1px solid var(--border);background:var(--surface2)}
-.thumb-empty{width:40px;height:40px;border-radius:5px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px}
 .cb{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
-.cb:disabled{cursor:not-allowed}
+.cb-post{accent-color:var(--pink)}
+.cb:disabled{cursor:default;opacity:1}
 
 /* badges */
 .g{display:inline-block;min-width:26px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid transparent}
@@ -103,25 +114,25 @@ code{font-family:var(--mono);font-size:11px;color:var(--text2)}
 .st-warn{background:var(--warn-bg);color:var(--warn)}
 .st-cancel{background:var(--mute-bg);color:var(--mute);text-decoration:line-through}
 tr.is-cancel td{color:var(--mute)}
+.flag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:3px;border:1px solid var(--border);color:var(--text3)}
+.flag.on{background:var(--ok-bg);color:var(--ok);border-color:#B8D4C4}
+.flag.on.post{background:var(--pink-bg);color:var(--pink);border-color:var(--pink-border)}
 
 /* cards */
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .dc{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s}
 .dc:hover{box-shadow:0 4px 14px rgba(0,0,0,.1)}
-.dc-photos{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
-.dc-ph{aspect-ratio:1;background:var(--surface2);position:relative;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px}
-.dc-ph img{width:100%;height:100%;object-fit:cover;display:block}
-.dc-ph span{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.5);color:#fff;font-size:10px;padding:1px 6px;border-radius:3px}
-.dc-body{padding:10px 12px}
+.dc-body{padding:12px 14px}
 .dc-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
 .dc-name{font-size:14px;font-weight:700}
-.dc-meta{font-size:11px;color:var(--text2);line-height:1.7}
-.dc-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)}
+.dc-meta{font-size:11px;color:var(--text2);line-height:1.8}
+.dc-flags{display:flex;gap:5px;margin-top:6px}
+.dc-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)}
 .dc-foot label{display:flex;align-items:center;gap:5px;cursor:pointer}
 
 .empty{padding:56px 20px;text-align:center;color:var(--text3)}
 .empty-ico{font-size:32px;margin-bottom:10px;display:block}
-.empty p{font-size:12px}
+.empty p{font-size:12px;line-height:1.8}
 
 /* stats */
 .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
@@ -180,7 +191,7 @@ tr.is-cancel td{color:var(--mute)}
 
 /* overlays */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
-.modal{background:var(--surface);border-radius:10px;width:100%;max-width:620px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal{background:var(--surface);border-radius:10px;width:100%;max-width:600px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.2)}
 .modal-h{padding:14px 18px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .modal-t{font-size:14px;font-weight:700}
 .modal-b{padding:16px 18px;overflow-y:auto}
@@ -194,59 +205,56 @@ tr.is-cancel td{color:var(--mute)}
 .fg input:disabled,.fg select:disabled,.fg textarea:disabled{background:var(--surface2);color:var(--text);opacity:1}
 .fg textarea{min-height:64px;resize:vertical}
 .fg-full{grid-column:1/-1}
-.fg-check{flex-direction:row;align-items:center;gap:8px;padding-top:20px}
+.checks{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px}
+.checks label{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
 .sec-lbl{font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--text3);padding-bottom:7px;border-bottom:1px solid var(--border);margin:4px 0 12px}
 .req{color:var(--pink)}
-.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.pslot{border:1px solid var(--border);border-radius:8px;overflow:hidden}
-.pslot-h{padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.pbox{aspect-ratio:4/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;text-align:center;padding:0}
-.pbox img{width:100%;height:100%;object-fit:contain;display:block;background:#222}
-.pbtns{display:flex;gap:6px;padding:7px 10px}
-.hint{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6}
-.lb{background:#141414;border-radius:10px;width:100%;max-width:1200px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
-.lb-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#eee;font-size:13px;gap:8px}
-.lb-h .btn{background:#2a2a2a;color:#eee;border-color:#444}
-.lb-b{display:grid;grid-template-columns:1fr 1fr;gap:2px;flex:1;min-height:0}
-.lb-b figure{position:relative;display:flex;align-items:center;justify-content:center;min-height:300px;background:#000}
-.lb-b img{max-width:100%;max-height:82vh;object-fit:contain;display:block}
-.lb-b figcaption{position:absolute;left:10px;top:10px;background:rgba(255,255,255,.9);color:#111;font-size:11px;font-weight:700;padding:2px 9px;border-radius:3px}
-.lb-b .nophoto{color:#777;font-size:12px}
+.hint{font-size:11px;color:var(--text3);line-height:1.7}
+.pw-row{display:grid;grid-template-columns:110px 1fr 70px;gap:8px;align-items:center;margin-bottom:8px}
+.pw-row input{padding:7px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px}
+.pw-state{font-size:11px;color:var(--text3)}
+.pw-state.ok{color:var(--ok)}
 .notice-list{font-size:13px;line-height:2}
 .notice-list b{font-family:var(--mono);font-size:15px}
-.notice-sub{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7}
+.notice-sub{font-size:12px;color:var(--text2);margin-top:8px;line-height:1.8}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:8px 15px;border-radius:7px;font-size:12px;z-index:999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:80vw}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
 
 @media (max-width:760px){
   .header,.branch-bar,.month-bar,.toolbar,.main-content{padding-left:16px;padding-right:16px}
-  .branch-bar{top:0;position:static}
-  .header{position:static}
-  .fgrid,.pgrid,.board-grid,.lb-b{grid-template-columns:1fr}
+  .branch-bar,.header{position:static}
+  .fgrid,.board-grid{grid-template-columns:1fr}
   .fsearch{width:100%}
   .bars{gap:3px}
+  .pw-row{grid-template-columns:90px 1fr}
+  .pw-state{grid-column:2}
 }
 </style>
 </head>
 <body>
 
-<div id="app">
+<!-- 登入畫面 -->
+<div class="login-wrap" id="login" hidden>
+  <form class="login-card" id="login-form" autocomplete="on">
+    <div class="login-logo">🏥</div>
+    <div class="login-title">【口碑案例優化】各店案例管理</div>
+    <div class="fg"><label for="lg-acc">帳號</label><input id="lg-acc" name="username" autocomplete="username" placeholder="例：M001"></div>
+    <div class="fg"><label for="lg-pw">密碼</label><input id="lg-pw" name="password" type="password" autocomplete="current-password"></div>
+    <button class="btn btn-primary" type="submit" id="lg-btn">登入</button>
+    <div class="login-err" id="lg-err"></div>
+    <div class="login-note" id="lg-note"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
 <div class="header">
   <div class="hlogo">
     <span style="font-size:17px">🏥</span>
     <span class="htitle">【口碑案例優化】各店案例管理</span>
-    <span class="hsub" id="save-lbl">● 本機儲存</span>
+    <span class="hsub" id="save-lbl"></span>
   </div>
-  <div class="hright no-shot">
-    <select class="role-sel" id="role-sel" title="權限">
-      <option value="editor">✎ 編輯者</option>
-      <option value="viewer">👁 檢視者</option>
-    </select>
-    <button class="btn" id="btn-import" data-edit>📥 匯入報表</button>
-    <button class="btn btn-primary" id="btn-add" data-edit>＋ 新增案例</button>
-    <button class="btn" id="btn-export">↓ 匯出 XLSX</button>
-  </div>
+  <div class="hright no-shot" id="hright"></div>
 </div>
 
 <nav class="branch-bar" id="branch-bar"></nav>
@@ -285,17 +293,25 @@ tr.is-cancel td{color:var(--mute)}
 
 <script>
 // ══════════════════════════════════════════
-//  CONSTANTS
+//  模式
+//  一般網址：登入後唯讀瀏覽（資料來自加密的 data.enc.json）
+//  網址加 ?admin=1：管理模式（資料存在這台電腦的瀏覽器，可匯入、編輯、發佈）
 // ══════════════════════════════════════════
+const ADMIN=new URLSearchParams(location.search).has('admin');
 const BRANCHES=['仁愛','桃園','向上','巨蛋','竹北','北屯'];
+const ACCOUNTS=[
+  {id:'M001',branch:'仁愛'},{id:'M002',branch:'桃園'},{id:'M003',branch:'向上'},
+  {id:'M005',branch:'巨蛋'},{id:'M006',branch:'竹北'},{id:'M007',branch:'北屯'},
+  {id:'總部',branch:null},
+];
+const HQ_MIN_PW=8, PW_MIN=4;
 const GRADES=['S','A','B','C','D'];
 const STATUSES=['進行中','待術後照','素材整理中','已完成','取消'];
-const PHOTO_MAX=1600, PHOTO_Q=0.85;
+const ITER=600000;
 // 各分院負責組員（每月統計 KPI 表用）
 const FIXED_STAFF={仁愛:'蔡忻宸',桃園:'陳涵',向上:'王喬儀',巨蛋:'林采蓁',北屯:'劉芳瑜'};
 const staffOf=(br,y,m)=>br==='竹北'?((y>2026||(y===2026&&m>=6))?'高麗雯':'謝昀溱'):(FIXED_STAFF[br]||'');
-// KPI：2026/6 起「總計≥3 且 S 級≥1」；之前「總計≥3 且 S 或 A 級≥1」
-// （對應原版：全臉公開＝S、匿名公開＝A）
+// KPI：2026/6 起「總計≥3 且 S 級≥1」；之前「總計≥3 且 S 或 A 級≥1」（原版：全臉公開＝S、匿名公開＝A）
 const isNewKPI=(y,m)=>y>2026||(y===2026&&m>=6);
 function kpiOf(list,y,m){
   const s=list.filter(c=>c.grade==='S').length, a=list.filter(c=>c.grade==='A').length, n=list.length;
@@ -305,79 +321,105 @@ function kpiOf(list,y,m){
 const NOW=new Date(), CUR_Y=NOW.getFullYear(), CUR_M=NOW.getMonth()+1;
 const pad=n=>String(n).padStart(2,'0');
 
-const S={view:'branch',branch:BRANCHES[0],year:CUR_Y,month:0,layout:'list',grade:'',status:'',q:'',
-  board:`M:${CUR_Y}-${pad(CUR_M)}`,role:'editor'};
-let cases=[];
-const photoCache=new Map();
+const S={view:'branch',branch:BRANCHES[0],year:CUR_Y,month:0,layout:'list',grade:'',status:'',q:'',board:`M:${CUR_Y}-${pad(CUR_M)}`};
+let cases=[];          // 自己看得到的完整案例
+let allRows=null;      // 分院帳號：全分院去識別資料（統計、戰情榜用）
+let SESSION=null;      // 登入資訊 {id,label,branch,updatedAt}
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>(Number(n)||0).toLocaleString('zh-TW');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
-const canEdit=()=>S.role==='editor';
+const canEdit=()=>ADMIN;
 const isSA=c=>c.grade==='S'||c.grade==='A';
 const yearOf=c=>c.saleDate?+c.saleDate.slice(0,4):null;
 const monthOf=c=>c.saleDate?+c.saleDate.slice(5,7):null;
+const myBranches=()=>SESSION&&SESSION.branch?[SESSION.branch]:BRANCHES;
+const statRows=()=>allRows||cases;
+const normAcc=s=>String(s||'').trim().toUpperCase();
+const fmtTime=iso=>{if(!iso)return '';const d=new Date(iso);return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;};
 
 // ══════════════════════════════════════════
-//  STORAGE (IndexedDB：案例 + 照片)
+//  加密（PBKDF2-SHA256 → AES-GCM 256）
+// ══════════════════════════════════════════
+const te=new TextEncoder(), td=new TextDecoder();
+const b64=buf=>{const b=new Uint8Array(buf);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s);};
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const rand=n=>crypto.getRandomValues(new Uint8Array(n));
+async function pwKey(pw,salt,iter){
+  const base=await crypto.subtle.importKey('raw',te.encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+const aesKey=raw=>crypto.subtle.importKey('raw',raw,'AES-GCM',false,['encrypt','decrypt']);
+async function seal(key,bytes){const iv=rand(12);return {i:b64(iv),c:b64(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,bytes))};}
+async function open_(key,e){return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(e.i)},key,unb64(e.c)));}
+
+// 管理者設定密碼：每個帳號一把隨機資料金鑰，用密碼包起來（瀏覽器只存金鑰，不存密碼）
+async function makeAccountKey(pw){
+  const raw=rand(32), salt=rand(16);
+  const wrap=await seal(await pwKey(pw,salt,ITER),raw);
+  return {s:b64(salt),w:wrap,k:b64(raw)};
+}
+async function loginDecrypt(file,acc,pw){
+  const e=file.accounts&&file.accounts[normAcc(acc)];
+  if(!e)throw new Error('bad');
+  try{
+    const raw=await open_(await pwKey(pw,unb64(e.s),file.iter),e.w);
+    return JSON.parse(td.decode(await open_(await aesKey(raw),e.d)));
+  }catch(err){throw new Error('bad');}
+}
+
+// ══════════════════════════════════════════
+//  管理模式的本機儲存（IndexedDB）
 // ══════════════════════════════════════════
 const DB={
-  db:null,
+  db:null, mem:{cases:new Map(),meta:new Map()},
   open(){return new Promise((res,rej)=>{
-    const r=indexedDB.open('koubei-cases',1);
-    r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('cases',{keyPath:'id'});d.createObjectStore('photos');};
+    const r=indexedDB.open('koubei-cases',2);
+    r.onupgradeneeded=()=>{const d=r.result;
+      if(!d.objectStoreNames.contains('cases'))d.createObjectStore('cases',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta');
+      if(d.objectStoreNames.contains('photos'))d.deleteObjectStore('photos');};
     r.onsuccess=()=>{this.db=r.result;res();};
     r.onerror=()=>rej(r.error);
   });},
-  mem:{cases:new Map(),photos:new Map()},   // 無法使用 IndexedDB 時的暫存（重整即清空）
   run(store,mode,fn){
     if(!this.db){
       const m=this.mem[store], kp=store==='cases';
-      const s={getAll:()=>({result:[...m.values()]}),get:k=>({result:m.get(k)}),delete:k=>{m.delete(k);return {};},
-        put:(v,k)=>{m.set(kp?v.id:k,v);return {};}};
+      const s={getAll:()=>({result:[...m.values()]}),get:k=>({result:m.get(k)}),delete:k=>{m.delete(k);return {};},put:(v,k)=>{m.set(kp?v.id:k,v);return {};}};
       const req=fn(s); return Promise.resolve(req&&'result' in req?req.result:undefined);
     }
     return new Promise((res,rej)=>{
-    const t=this.db.transaction(store,mode), s=t.objectStore(store);
-    const req=fn(s);
-    t.oncomplete=()=>res(req&&'result' in req?req.result:undefined);
-    t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
-  });},
+      const t=this.db.transaction(store,mode), s=t.objectStore(store); const req=fn(s);
+      t.oncomplete=()=>res(req&&'result' in req?req.result:undefined);
+      t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
+    });
+  },
   allCases(){return this.run('cases','readonly',s=>s.getAll());},
   putCases(list){return this.run('cases','readwrite',s=>{list.forEach(c=>s.put(c));});},
   delCase(id){return this.run('cases','readwrite',s=>s.delete(id));},
-  getPhoto(id){return this.run('photos','readonly',s=>s.get(id));},
-  putPhoto(id,blob){return this.run('photos','readwrite',s=>s.put(blob,id));},
-  delPhoto(id){if(!id)return Promise.resolve();photoCache.delete(id);return this.run('photos','readwrite',s=>s.delete(id));},
+  getMeta(k){return this.run('meta','readonly',s=>s.get(k));},
+  setMeta(k,v){return this.run('meta','readwrite',s=>s.put(v,k));},
 };
-
 async function persist(list){
   setSaveLabel('● 儲存中…','#B8860B');
-  try{await DB.putCases(list);DB.db?setSaveLabel('● 本機儲存',''):setSaveLabel('● 暫存中（重整即清空）','#C0394A');}
+  try{await DB.putCases(list);await DB.setMeta('dirty',true);updateAdminLabel();}
   catch(e){setSaveLabel('● 儲存失敗','#C0394A');toast('儲存失敗：'+e.message);throw e;}
 }
 function setSaveLabel(t,color){const el=$('#save-lbl');el.textContent=t;el.style.color=color||'';}
-
-async function photoURL(pid){
-  if(!pid)return null;
-  if(photoCache.has(pid))return photoCache.get(pid);
-  const b=await DB.getPhoto(pid); if(!b)return null;
-  const u=URL.createObjectURL(b); photoCache.set(pid,u); return u;
-}
-function hydrate(root=document){
-  root.querySelectorAll('img[data-pid]:not([src])').forEach(async img=>{
-    const u=await photoURL(img.dataset.pid); if(u)img.src=u;
-  });
+async function updateAdminLabel(){
+  if(!DB.db){setSaveLabel('● 暫存中（重整即清空）','#C0394A');return;}
+  const dirty=await DB.getMeta('dirty'), last=await DB.getMeta('publishedAt');
+  if(dirty)setSaveLabel('● 管理模式・有修改尚未發佈','#B45F06');
+  else setSaveLabel(`● 管理模式・已發佈${last?' '+fmtTime(last):''}`,'');
 }
 
 function prefs(save){
   try{
-    if(save){localStorage.setItem('koubei_prefs',JSON.stringify({branch:S.branch,layout:S.layout,role:S.role}));return;}
+    if(save){localStorage.setItem('koubei_prefs',JSON.stringify({branch:S.branch,layout:S.layout}));return;}
     const p=JSON.parse(localStorage.getItem('koubei_prefs')||'{}');
     if(BRANCHES.includes(p.branch))S.branch=p.branch;
     if(p.layout==='card'||p.layout==='list')S.layout=p.layout;
-    if(p.role==='viewer'||p.role==='editor')S.role=p.role;
   }catch(e){}
 }
 
@@ -385,7 +427,7 @@ function prefs(save){
 //  RENDER：共用
 // ══════════════════════════════════════════
 function yearsList(){
-  const ys=new Set([CUR_Y]); cases.forEach(c=>{const y=yearOf(c);if(y)ys.add(y);});
+  const ys=new Set([CUR_Y]); [...statRows(),...cases].forEach(c=>{const y=yearOf(c);if(y)ys.add(y);});
   return [...ys].sort((a,b)=>b-a);
 }
 const gradeBadge=g=>g?`<span class="g g-${g}">${g}</span>`:`<span class="g g-none">未填</span>`;
@@ -393,16 +435,29 @@ const statusCls=s=>s==='已完成'?'st-ok':s==='取消'?'st-cancel':'st-warn';
 const statusBadge=s=>s?`<span class="st ${statusCls(s)}">${esc(s)}</span>`:'<span style="color:var(--text3)">—</span>';
 const sortCases=list=>list.sort((a,b)=>(b.saleDate||'').localeCompare(a.saleDate||'')||(b.createdAt||0)-(a.createdAt||0));
 
+function renderHeader(){
+  const h=[];
+  if(ADMIN){
+    h.push('<button class="btn" id="btn-pw">🔑 設定帳號密碼</button>');
+    h.push('<button class="btn" id="btn-import">📥 匯入報表</button>');
+    h.push('<button class="btn btn-primary" id="btn-add">＋ 新增案例</button>');
+    h.push('<button class="btn btn-pub" id="btn-publish">🌐 發佈到網站</button>');
+  }
+  h.push('<button class="btn" id="btn-export">↓ 匯出 XLSX</button>');
+  if(!ADMIN)h.push('<button class="btn" id="btn-logout">登出</button>');
+  $('#hright').innerHTML=h.join('');
+  if(!ADMIN)setSaveLabel(`● ${SESSION.label}（${SESSION.id}）・資料更新 ${fmtTime(SESSION.updatedAt)}`,'');
+}
+
 function render(){
-  // 分院分頁
-  $('#branch-bar').innerHTML=BRANCHES.map(b=>{
+  const brs=myBranches(); if(!brs.includes(S.branch))S.branch=brs[0];
+  $('#branch-bar').innerHTML=brs.map(b=>{
     const n=cases.filter(c=>c.branch===b).length;
     return `<button class="btab ${S.view==='branch'&&S.branch===b?'active':''}" data-branch="${b}">${b}${n?`<small>(${n})</small>`:''}</button>`;
   }).join('')+
   `<button class="btab stab first ${S.view==='stats'?'active':''}" data-view="stats">📊 每月統計</button>`+
   `<button class="btab stab board-tab ${S.view==='board'?'active':''}" data-view="board">🏆 戰情榜</button>`;
 
-  // 年度＋月份
   const ys=yearsList(); if(!ys.includes(S.year))S.year=ys[0];
   let mb=`<select class="year-sel" id="year-sel">${ys.map(y=>`<option value="${y}" ${y===S.year?'selected':''}>${y} 年</option>`).join('')}</select>`;
   if(S.view==='branch'){
@@ -411,20 +466,15 @@ function render(){
       const n=m?inB.filter(c=>monthOf(c)===m).length:0;
       return `<button class="mbtn ${S.month===m?'active':''}" data-month="${m}">${m?m+'月':'全部'}${n?`<small>${n}</small>`:''}</button>`;
     }).join('');
-  } else mb+=`<span style="font-size:11px;color:var(--text3);padding:0 0 12px">依銷售日統計</span>`;
+  } else mb+=`<span style="font-size:11px;color:var(--text3);padding:0 0 12px">依銷售日統計${allRows?'・全分院數字（不含顧客資料）':''}</span>`;
   $('#month-bar').innerHTML=mb;
   $('#month-bar').hidden=S.view==='board';
   $('#case-toolbar').hidden=S.view!=='branch';
   $('#board-toolbar').hidden=S.view!=='board';
 
-  // 權限
-  $('#role-sel').value=S.role;
-  document.querySelectorAll('[data-edit]').forEach(b=>{b.disabled=!canEdit();b.title=canEdit()?'':'檢視者無此權限';});
-
   if(S.view==='branch')renderCases();
   else if(S.view==='stats')renderStats();
   else renderBoard();
-  hydrate($('#content'));
 }
 
 // ══════════════════════════════════════════
@@ -452,14 +502,14 @@ function renderCases(){
   const hasAny=cases.some(c=>c.branch===S.branch);
   const emptyMsg=hasAny?'沒有符合條件的案例':'此分院尚無案例';
   const ro=canEdit()?'':'disabled';
-  const thumb=(c,k)=>c[k]?`<img class="thumb" data-pid="${c[k]}" data-lightbox="${c.id}" alt="">`:`<div class="thumb-empty">＋</div>`;
+  const cb=(c,f,cls='')=>`<input type="checkbox" class="cb ${cls}" data-flag="${f}" data-id="${c.id}" ${c[f]?'checked':''} ${ro}>`;
 
   if(S.layout==='list'){
     $('#content').innerHTML=`<div class="table-wrap"><table class="case-table"><thead><tr>
       <th class="thc">術前</th><th class="thc">術後</th><th>#</th><th>銷售日</th><th>手術日</th><th>顧客姓名</th><th>顧客代碼</th>
       <th>授權等級</th><th class="thr">折讓金額</th><th>分院</th><th>諮詢師</th><th>狀態</th><th class="thc">櫃檯開卡</th>
       </tr></thead><tbody>${list.length?list.map((c,i)=>`<tr data-open="${c.id}" class="${c.status==='取消'?'is-cancel':''}">
-        <td>${thumb(c,'photoBefore')}</td><td>${thumb(c,'photoAfter')}</td>
+        <td class="tdc">${cb(c,'cbPre')}</td><td class="tdc">${cb(c,'cbPost','cb-post')}</td>
         <td class="mono" style="color:var(--text3);font-size:10px">${i+1}</td>
         <td class="mono" style="font-size:11px">${c.saleDate||'<span style="color:var(--text3)">未填</span>'}</td>
         <td class="mono" style="font-size:11px">${c.surgeryDate||'—'}</td>
@@ -470,13 +520,12 @@ function renderCases(){
         <td style="font-size:11px;color:var(--text2)">${c.branch}</td>
         <td style="font-size:11px">${esc(c.consultant||'—')}</td>
         <td>${statusBadge(c.status)}</td>
-        <td class="tdc"><input type="checkbox" class="cb" data-card="${c.id}" ${c.card?'checked':''} ${ro}></td>
+        <td class="tdc">${cb(c,'card')}</td>
       </tr>`).join(''):`<tr><td colspan="13"><div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div></td></tr>`}
       </tbody></table></div>`;
   } else {
-    const ph=(c,k,l)=>`<div class="dc-ph">${c[k]?`<img data-pid="${c[k]}" data-lightbox="${c.id}" alt="">`:'尚無照片'}<span>${l}</span></div>`;
+    const flag=(on,l,cls='')=>`<span class="flag ${on?'on':''} ${cls}">${on?'✓':'—'} ${l}</span>`;
     $('#content').innerHTML=list.length?`<div class="card-grid">${list.map(c=>`<div class="dc" data-open="${c.id}">
-      <div class="dc-photos">${ph(c,'photoBefore','術前')}${ph(c,'photoAfter','術後')}</div>
       <div class="dc-body">
         <div class="dc-top"><span class="dc-name">${esc(c.name||c.code||'—')}</span>${gradeBadge(c.grade)}</div>
         <div class="dc-meta">
@@ -484,8 +533,9 @@ function renderCases(){
           銷售 <span class="mono">${c.saleDate||'未填'}</span>　手術 <span class="mono">${c.surgeryDate||'—'}</span><br>
           折讓 <span class="mono">$${fmt(c.discount)}</span>
         </div>
+        <div class="dc-flags">${flag(c.cbPre,'術前')}${flag(c.cbPost,'術後','post')}</div>
       </div>
-      <div class="dc-foot">${statusBadge(c.status)}<label><input type="checkbox" class="cb" data-card="${c.id}" ${c.card?'checked':''} ${ro}> 櫃檯開卡</label></div>
+      <div class="dc-foot">${statusBadge(c.status)}<label><input type="checkbox" class="cb" data-flag="card" data-id="${c.id}" ${c.card?'checked':''} ${ro}> 櫃檯開卡</label></div>
     </div>`).join('')}</div>`:`<div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div>`;
   }
 }
@@ -494,7 +544,7 @@ function renderCases(){
 //  RENDER：每月統計
 // ══════════════════════════════════════════
 function renderStats(){
-  const yc=cases.filter(c=>yearOf(c)===S.year);
+  const yc=statRows().filter(c=>yearOf(c)===S.year);
   const n=yc.length, sa=yc.filter(isSA).length;
   const disc=yc.reduce((s,c)=>s+(c.discount||0),0);
   const done=yc.filter(c=>c.status==='已完成').length, carded=yc.filter(c=>c.card).length;
@@ -504,8 +554,7 @@ function renderStats(){
 
   const byM=Array.from({length:12},(_,i)=>yc.filter(c=>monthOf(c)===i+1).length);
   const maxM=Math.max(1,...byM);
-  const cell=(br,m)=>yc.filter(c=>c.branch===br&&monthOf(c)===m).length;
-  const heat=BRANCHES.map(br=>Array.from({length:12},(_,i)=>cell(br,i+1)));
+  const heat=BRANCHES.map(br=>Array.from({length:12},(_,i)=>yc.filter(c=>c.branch===br&&monthOf(c)===i+1).length));
   const maxH=Math.max(1,...heat.flat());
   const heatTd=v=>{if(!v)return '<td style="color:var(--border2)">·</td>';const a=.12+.78*v/maxH;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
 
@@ -578,7 +627,7 @@ function kpiSection(yc){
 // ══════════════════════════════════════════
 function boardPeriods(){
   const ys=yearsList(), ms=new Set([`${CUR_Y}-${pad(CUR_M)}`]);
-  cases.forEach(c=>{if(c.saleDate)ms.add(c.saleDate.slice(0,7));});
+  statRows().forEach(c=>{if(c.saleDate)ms.add(c.saleDate.slice(0,7));});
   return [{v:'all',l:'全部期間'},...ys.map(y=>({v:'Y:'+y,l:`${y} 年`})),
     ...[...ms].sort().reverse().map(m=>({v:'M:'+m,l:`${m.slice(0,4)} 年 ${+m.slice(5)} 月`}))];
 }
@@ -593,7 +642,7 @@ function boardLabel(){return boardPeriods().find(p=>p.v===S.board)?.l||'';}
 function renderBoard(){
   const ps=boardPeriods(); if(!ps.some(p=>p.v===S.board))S.board=ps[0].v;
   $('#board-period').innerHTML=ps.map(p=>`<option value="${p.v}" ${p.v===S.board?'selected':''}>${p.l}</option>`).join('');
-  const pc=cases.filter(inBoardPeriod);
+  const pc=statRows().filter(inBoardPeriod);
   const rank=(a,b)=>b.n-a.n||b.sa-a.sa;
   const brRows=BRANCHES.map(br=>{const l=pc.filter(c=>c.branch===br);return {name:br,n:l.length,sa:l.filter(isSA).length};}).sort(rank);
   const cm=new Map();
@@ -627,43 +676,32 @@ function renderBoard(){
 // ══════════════════════════════════════════
 function openOverlay(html,onClose){
   const ov=document.createElement('div'); ov.className='overlay'; ov.innerHTML=html;
-  const close=()=>{ov.remove();document.removeEventListener('keydown',esc_);onClose&&onClose();};
-  const esc_=e=>{if(e.key==='Escape')close();};
-  ov.addEventListener('mousedown',e=>{if(e.target===ov)ov._down=true;});
-  ov.addEventListener('click',e=>{if(e.target===ov&&ov._down)close();ov._down=false;if(e.target.closest('[data-close]'))close();});
-  document.addEventListener('keydown',esc_);
-  $('#overlay-root').appendChild(ov); hydrate(ov);
+  const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);onClose&&onClose();};
+  const onKey=e=>{if(e.key==='Escape')close();};
+  ov.addEventListener('mousedown',e=>{ov._down=e.target===ov;});
+  ov.addEventListener('click',e=>{if(e.target===ov&&ov._down)close();if(e.target.closest('[data-close]'))close();});
+  document.addEventListener('keydown',onKey);
+  $('#overlay-root').appendChild(ov);
   return {el:ov,close};
 }
 function notice(title,body){
-  openOverlay(`<div class="modal" style="max-width:440px"><div class="modal-h"><span class="modal-t">${title}</span><button class="btn btn-icon" data-close>✕</button></div>
+  openOverlay(`<div class="modal" style="max-width:460px"><div class="modal-h"><span class="modal-t">${title}</span><button class="btn btn-icon" data-close>✕</button></div>
   <div class="modal-b">${body}</div><div class="modal-f"><button class="btn btn-primary" data-close>知道了</button></div></div>`);
 }
 
-function openLightbox(id){
-  const c=cases.find(x=>x.id===id); if(!c)return;
-  const fig=(k,l)=>`<figure><figcaption>${l}</figcaption>${c[k]?`<img data-pid="${c[k]}" alt="${l}">`:'<div class="nophoto">尚無照片</div>'}</figure>`;
-  openOverlay(`<div class="lb"><div class="lb-h"><span><b>${esc(c.name||c.code)}</b>　${esc(c.code||'')}　${c.branch}　${c.saleDate||''}　${c.grade?c.grade+' 級':''}</span><button class="btn btn-sm" data-close>✕ 關閉</button></div>
-  <div class="lb-b">${fig('photoBefore','術前')}${fig('photoAfter','術後')}</div></div>`);
-}
-
 // ══════════════════════════════════════════
-//  新增 / 編輯
+//  新增 / 編輯 / 檢視
 // ══════════════════════════════════════════
 function openCase(id){
   const c=id?cases.find(x=>x.id===id):null;
   if(id&&!c)return;
-  const ro=!canEdit();
-  const d=c||{branch:S.view==='branch'?S.branch:BRANCHES[0],status:'進行中',discount:0,card:false};
-  const P={photoBefore:{pid:d.photoBefore||'',blob:null,url:null,removed:false},photoAfter:{pid:d.photoAfter||'',blob:null,url:null,removed:false}};
-  const dis=ro?'disabled':'';
+  const ro=!canEdit(), dis=ro?'disabled':'';
+  const d=c||{branch:S.view==='branch'?S.branch:BRANCHES[0],status:'進行中',discount:0};
   const opt=(arr,v,blank)=>(blank!=null?`<option value="">${blank}</option>`:'')+arr.map(x=>`<option value="${x}" ${x===v?'selected':''}>${x}</option>`).join('');
   const consultants=[...new Set(cases.map(x=>(x.consultant||'').trim()).filter(Boolean))].sort();
-  const slot=(k,l)=>`<div class="pslot" data-slot="${k}"><div class="pslot-h">${l}</div><div class="pbox"></div>
-    ${ro?'':`<div class="pbtns"><label class="btn btn-sm">上傳<input type="file" accept="image/jpeg,image/png" hidden></label><button type="button" class="btn btn-sm btn-danger" data-rm>移除</button></div>`}</div>`;
-  const title=ro?'案例內容（唯讀）':c?'編輯案例':'新增案例';
+  const ck=(n,l)=>`<label><input type="checkbox" class="cb" name="${n}" ${d[n]?'checked':''} ${dis}> ${l}</label>`;
 
-  const ov=openOverlay(`<div class="modal"><div class="modal-h"><span class="modal-t">${title}</span><button class="btn btn-icon" data-close>✕</button></div>
+  const ov=openOverlay(`<div class="modal"><div class="modal-h"><span class="modal-t">${ro?'案例內容':c?'編輯案例':'新增案例'}</span><button class="btn btn-icon" data-close>✕</button></div>
   <div class="modal-b"><form id="case-form" onsubmit="return false">
     <div class="sec-lbl">基本資料</div>
     <div class="fgrid">
@@ -675,51 +713,23 @@ function openCase(id){
       <div class="fg"><label>顧客代碼 <span class="req">*</span></label><input name="code" value="${esc(d.code||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
       <div class="fg"><label>授權等級</label><select name="grade" ${dis}>${opt(GRADES,d.grade||'','未填')}</select></div>
       <div class="fg"><label>折讓金額（元）</label><input type="number" name="discount" step="1" min="0" value="${d.discount||0}" ${dis}></div>
-      <div class="fg"><label>狀態</label><select name="status" ${dis}>${opt(STATUSES,d.status||'進行中')}</select></div>
-      <div class="fg fg-check"><input type="checkbox" class="cb" name="card" id="f-card" ${d.card?'checked':''} ${dis}><label for="f-card" style="font-size:12px">櫃檯已開卡</label></div>
-      <div class="fg fg-full"><label>備註</label><textarea name="note" ${dis}>${esc(d.note||'')}</textarea></div>
+      <div class="fg fg-full"><label>狀態</label><select name="status" ${dis}>${opt(STATUSES,d.status||'進行中')}</select></div>
     </div>
-    <div class="sec-lbl">照片</div>
-    <div class="pgrid">${slot('photoBefore','術前照')}${slot('photoAfter','術後照')}</div>
-    ${ro?'':'<div class="hint">⚠️ 顧客須已簽署肖像／案例授權同意書才可上傳。支援 JPG、PNG，上傳前自動壓縮為最長邊 1600px。</div>'}
+    <div class="sec-lbl">素材與開卡</div>
+    <div class="checks">${ck('cbPre','術前')}${ck('cbPost','術後')}${ck('card','櫃檯已開卡')}</div>
+    <div class="fg"><label>備註</label><textarea name="note" ${dis}>${esc(d.note||'')}</textarea></div>
   </form></div>
   <div class="modal-f">
     ${c&&!ro?'<button class="btn btn-danger" data-del>🗑 刪除案例</button>':''}<span class="grow"></span>
     ${ro?'<button class="btn btn-primary" data-close>關閉</button>':'<button class="btn" data-close>取消</button><button class="btn btn-primary" data-save>儲存</button>'}
-  </div></div>`,()=>{Object.values(P).forEach(p=>p.url&&URL.revokeObjectURL(p.url));});
+  </div></div>`);
   const root=ov.el;
 
-  const drawSlot=async k=>{
-    const box=root.querySelector(`[data-slot="${k}"] .pbox`), p=P[k];
-    const url=p.url||(!p.removed&&p.pid?await photoURL(p.pid):null);
-    box.innerHTML=url?`<img src="${url}" alt="">`:'尚無照片';
-    const rm=root.querySelector(`[data-slot="${k}"] [data-rm]`); if(rm)rm.disabled=!url;
-  };
-  Object.keys(P).forEach(drawSlot);
-
-  root.querySelectorAll('[data-slot]').forEach(el=>{
-    const k=el.dataset.slot;
-    el.querySelector('input[type=file]')?.addEventListener('change',async e=>{
-      const f=e.target.files[0]; e.target.value=''; if(!f)return;
-      if(!/^image\/(jpeg|png)$/.test(f.type)){toast('請上傳 JPG 或 PNG');return;}
-      try{
-        const blob=await compressImage(f);
-        if(P[k].url)URL.revokeObjectURL(P[k].url);
-        Object.assign(P[k],{blob,url:URL.createObjectURL(blob),removed:false});
-        drawSlot(k);
-      }catch(err){toast('照片讀取失敗：'+err.message);}
-    });
-    el.querySelector('[data-rm]')?.addEventListener('click',()=>{
-      if(P[k].url)URL.revokeObjectURL(P[k].url);
-      Object.assign(P[k],{blob:null,url:null,removed:true}); drawSlot(k);
-    });
-  });
-
   root.querySelector('[data-del]')?.addEventListener('click',async()=>{
-    if(!confirm(`確定刪除「${c.name||c.code}」這筆案例？\n\n術前、術後照片會一起刪除，且無法復原。`))return;
-    await DB.delCase(c.id); await DB.delPhoto(c.photoBefore); await DB.delPhoto(c.photoAfter);
+    if(!confirm(`確定刪除「${c.name||c.code}」這筆案例？\n\n刪除後無法復原。`))return;
+    await DB.delCase(c.id); await DB.setMeta('dirty',true);
     cases=cases.filter(x=>x.id!==c.id);
-    ov.close(); render(); toast('已刪除案例');
+    ov.close(); render(); updateAdminLabel(); toast('已刪除案例');
   });
 
   root.querySelector('[data-save]')?.addEventListener('click',async()=>{
@@ -727,39 +737,82 @@ function openCase(id){
     const v=k=>String(f.get(k)||'').trim();
     const rec={branch:v('branch'),consultant:v('consultant'),saleDate:v('saleDate'),surgeryDate:v('surgeryDate'),
       name:v('name'),code:v('code'),grade:v('grade'),discount:Math.max(0,Math.round(+v('discount')||0)),
-      status:v('status')||'進行中',card:!!f.get('card'),note:v('note')};
+      status:v('status')||'進行中',cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),card:!!f.get('card'),note:v('note')};
     if(!rec.name&&!rec.code){toast('顧客姓名與顧客代碼至少填一個');return;}
     const k=caseKey(rec), dup=cases.find(x=>x.id!==(c&&c.id)&&caseKey(x)===k);
     if(dup&&!confirm('已經有一筆「分院＋顧客＋銷售日」相同的案例，仍要儲存嗎？'))return;
-    const obj=c?Object.assign(c,rec):{id:uid(),createdAt:Date.now(),photoBefore:'',photoAfter:'',...rec};
-    for(const key of ['photoBefore','photoAfter']){
-      const p=P[key];
-      if(p.blob){const nid=uid();await DB.putPhoto(nid,p.blob);if(p.pid)await DB.delPhoto(p.pid);obj[key]=nid;}
-      else if(p.removed&&p.pid){await DB.delPhoto(p.pid);obj[key]='';}
-    }
+    const obj=c?Object.assign(c,rec):{id:uid(),createdAt:Date.now(),...rec};
     obj.updatedAt=Date.now();
     await persist([obj]);
     if(!c)cases.push(obj);
     ov.close();
-    if(S.view==='branch'&&obj.branch!==S.branch){S.branch=obj.branch;}
+    if(S.view==='branch')S.branch=obj.branch;
     render(); toast('✓ 案例已儲存');
   });
 }
 
-function compressImage(file){
-  return new Promise((res,rej)=>{
-    const u=URL.createObjectURL(file), img=new Image();
-    img.onload=()=>{
-      const s=Math.min(1,PHOTO_MAX/Math.max(img.naturalWidth,img.naturalHeight));
-      const w=Math.round(img.naturalWidth*s), h=Math.round(img.naturalHeight*s);
-      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
-      const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
-      URL.revokeObjectURL(u);
-      cv.toBlob(b=>b?res(b):rej(new Error('壓縮失敗')),'image/jpeg',PHOTO_Q);
-    };
-    img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('無法讀取圖片'));};
-    img.src=u;
+// ══════════════════════════════════════════
+//  設定帳號密碼（管理模式）
+// ══════════════════════════════════════════
+async function openPasswords(){
+  const keys=await DB.getMeta('keys')||{};
+  const ov=openOverlay(`<div class="modal" style="max-width:520px"><div class="modal-h"><span class="modal-t">🔑 設定帳號密碼</span><button class="btn btn-icon" data-close>✕</button></div>
+  <div class="modal-b">
+    <p class="hint" style="margin-bottom:14px">每個帳號設定一次即可，之後發佈不用再輸入。已設定的留空就是不變更。<br>密碼不會存在任何地方，這台電腦只保存加密用的金鑰。<b>忘記密碼只能重新設定。</b></p>
+    <form id="pw-form" onsubmit="return false" autocomplete="off">
+    ${ACCOUNTS.map(a=>`<div class="pw-row">
+      <label style="font-size:12px;font-weight:500">${a.id}<br><span style="font-size:10px;color:var(--text3)">${a.branch?a.branch+'分院':'全部＋統計'}</span></label>
+      <input type="password" name="${a.id}" autocomplete="new-password" placeholder="${keys[a.id]?'已設定（留空不變更）':(a.branch?'':'至少 '+HQ_MIN_PW+' 個字')}">
+      <span class="pw-state ${keys[a.id]?'ok':''}">${keys[a.id]?'✓ 已設定':'未設定'}</span>
+    </div>`).join('')}
+    </form>
+    <p class="hint" style="margin-top:6px">總部帳號看得到全部顧客資料，密碼至少 ${HQ_MIN_PW} 個字。</p>
+  </div>
+  <div class="modal-f"><span class="grow"></span><button class="btn" data-close>取消</button><button class="btn btn-primary" data-save>儲存</button></div></div>`);
+  ov.el.querySelector('[data-save]').addEventListener('click',async e=>{
+    const f=new FormData(ov.el.querySelector('#pw-form'));
+    const upd={};
+    for(const a of ACCOUNTS){
+      const pw=String(f.get(a.id)||'');
+      if(!pw)continue;
+      const min=a.branch?PW_MIN:HQ_MIN_PW;
+      if(pw.length<min){toast(`${a.id} 的密碼至少要 ${min} 個字`);return;}
+      upd[a.id]=pw;
+    }
+    if(!Object.keys(upd).length){ov.close();return;}
+    e.target.disabled=true; e.target.textContent='處理中…';
+    for(const [id,pw] of Object.entries(upd))keys[id]=await makeAccountKey(pw);
+    await DB.setMeta('keys',keys); await DB.setMeta('dirty',true);
+    ov.close(); updateAdminLabel();
+    toast(`✓ 已設定 ${Object.keys(upd).length} 個帳號，請按「發佈到網站」`);
   });
+}
+
+// ══════════════════════════════════════════
+//  發佈（管理模式）：產生加密的 data.enc.json
+// ══════════════════════════════════════════
+async function publish(){
+  const keys=await DB.getMeta('keys')||{};
+  const missing=ACCOUNTS.filter(a=>!keys[a.id]).map(a=>a.id);
+  if(missing.length){notice('還不能發佈',`<p class="notice-sub">這些帳號還沒設定密碼：<b>${missing.join('、')}</b><br>請先按「🔑 設定帳號密碼」。</p>`);return;}
+  const updatedAt=new Date().toISOString();
+  const strip=c=>({id:c.id,branch:c.branch,saleDate:c.saleDate||'',surgeryDate:c.surgeryDate||'',name:c.name||'',code:c.code||'',
+    grade:c.grade||'',discount:c.discount||0,consultant:c.consultant||'',status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||''});
+  const anon=cases.map(c=>({branch:c.branch,saleDate:c.saleDate||'',grade:c.grade||'',discount:c.discount||0,
+    consultant:c.consultant||'',status:c.status||'',card:!!c.card,cbPre:!!c.cbPre,cbPost:!!c.cbPost}));
+  const out={v:1,iter:ITER,updatedAt,accounts:{}};
+  for(const a of ACCOUNTS){
+    const k=keys[a.id];
+    const payload={id:a.id,label:a.branch?a.branch+'分院':'總部',branch:a.branch,updatedAt,
+      cases:(a.branch?cases.filter(c=>c.branch===a.branch):cases).map(strip),all:a.branch?anon:null};
+    out.accounts[normAcc(a.id)]={s:k.s,w:k.w,d:await seal(await aesKey(unb64(k.k)),te.encode(JSON.stringify(payload)))};
+  }
+  const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='data.enc.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  await DB.setMeta('dirty',false); await DB.setMeta('publishedAt',updatedAt); updateAdminLabel();
+  notice('🌐 發佈檔已產生',`<div class="notice-list">共 <b>${cases.length}</b> 筆案例、<b>${ACCOUNTS.length}</b> 個帳號</div>
+    <p class="notice-sub">已下載 <b>data.enc.json</b>（在「下載」資料夾）。<br>請跟 Claude 說「<b>發佈好了</b>」，Claude 會幫你上傳到網站。<br>檔案已加密，沒有密碼看不到內容。</p>`);
 }
 
 // ══════════════════════════════════════════
@@ -776,6 +829,8 @@ const FIELD_KEYS=[
   ['consultant',['諮詢師','諮詢','銷售業務','業務','顧問']],
   ['status',['狀態']],
   ['card',['開卡','櫃檯']],
+  ['cbPre',['術前']],
+  ['cbPost',['術後']],
   ['note',['備註','說明']],
 ];
 const caseKey=c=>`${c.branch}|${(c.code||c.name||'').trim()}|${c.saleDate||''}`;
@@ -808,7 +863,8 @@ function toDate(v){
   const m=s.match(/(\d{2,4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/);
   return m?mk(m[1],m[2],m[3]):'';
 }
-const toBranch=s=>BRANCHES.find(b=>String(s||'').includes(b))||'';
+const BRANCH_CODES={M001:'仁愛',M002:'桃園',M003:'向上',M005:'巨蛋',M006:'竹北',M007:'北屯'};
+const toBranch=s=>{const t=String(s||'');return BRANCHES.find(b=>t.includes(b))||(Object.entries(BRANCH_CODES).find(([k])=>t.toUpperCase().includes(k))||[])[1]||'';};
 const toGrade=s=>{const m=String(s||'').trim().match(/^([A-Za-z])/);const g=m?m[1].toUpperCase():'';return GRADES.includes(g)?g:'';};
 const toInt=s=>{const t=String(s??'').replace(/[,\s$＄元NT]/gi,'');if(t==='')return null;const n=parseFloat(t);return isNaN(n)?null:Math.round(n);};
 const toBool=s=>{if(s===true)return true;if(s===false)return false;const t=String(s??'').trim().toUpperCase();
@@ -856,7 +912,7 @@ async function importFiles(files){
             surgeryDate:toDate(g('surgeryDate')),grade:toGrade(g('grade')),consultant:String(g('consultant')).trim(),
             status:toStatus(g('status')),note:String(g('note')).trim()};
           const disc=toInt(g('discount')); if(disc!=null)rec.discount=disc;
-          const cardRaw=g('card'); if(String(cardRaw).trim()!=='')rec.card=toBool(cardRaw);
+          for(const f of ['card','cbPre','cbPost']){const raw=g(f); if(String(raw).trim()!=='')rec[f]=toBool(raw);}
           const k=caseKey(rec);
           let c=index.get(k);
           if(c){
@@ -864,7 +920,7 @@ async function importFiles(files){
             c.updatedAt=Date.now();
             if(!created.has(c.id)&&!touched.has(c.id))updated++;
           } else {
-            c={id:uid(),createdAt:Date.now(),photoBefore:'',photoAfter:'',discount:0,card:false,note:'',...rec,status:rec.status||'進行中'};
+            c={id:uid(),createdAt:Date.now(),discount:0,card:false,cbPre:false,cbPost:false,note:'',...rec,status:rec.status||'進行中'};
             index.set(k,c); cases.push(c); created.add(c.id); added++;
           }
           touched.set(c.id,c);
@@ -875,8 +931,8 @@ async function importFiles(files){
     }
     if(touched.size)await persist([...touched.values()]);
   }catch(err){
-    cases=await DB.allCases();   // 回復到已儲存狀態
-    render(); notice('匯入失敗',`<p style="font-size:12px">${esc(err.message)}</p>`); return;
+    cases=await DB.allCases();
+    render(); notice('匯入失敗',`<p class="notice-sub">${esc(err.message)}</p>`); return;
   }
   const top=Object.entries(perBranch).sort((a,b)=>b[1]-a[1])[0];
   if(top){
@@ -888,28 +944,29 @@ async function importFiles(files){
   notice('📥 匯入完成',`<div class="notice-list">新增 <b>${added}</b> 筆　更新 <b>${updated}</b> 筆　略過 <b>${skipped}</b> 列</div>
     <div class="notice-sub">讀取 ${sheetsOk} 個工作表${top?`，已切換到匯入最多筆的分院「${top[0]}」`:''}。
     ${skipped?'<br>略過的列：沒有顧客姓名也沒有顧客代碼。':''}
-    ${skippedSheets.length?`<br>找不到「顧客姓名／顧客代碼」標題而略過的工作表：${skippedSheets.map(esc).join('、')}`:''}</div>`);
+    ${skippedSheets.length?`<br>找不到「顧客姓名／顧客代碼」標題而略過的工作表：${skippedSheets.map(esc).join('、')}`:''}
+    <br><b>確認沒問題後，請按「🌐 發佈到網站」。</b></div>`);
 }
 
 // ══════════════════════════════════════════
 //  匯出 XLSX / 截圖
 // ══════════════════════════════════════════
 function doExport(){
-  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','櫃檯開卡','術前照','術後照','備註'];
+  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','術前','術後','櫃檯開卡','備註'];
   const toRow=c=>[c.branch,c.saleDate||'',c.surgeryDate||'',c.name||'',c.code||'',c.grade||'',c.discount||0,c.consultant||'',
-    c.status||'',c.card?'是':'否',c.photoBefore?'有':'',c.photoAfter?'有':'',c.note||''];
+    c.status||'',c.cbPre?'✓':'',c.cbPost?'✓':'',c.card?'是':'否',c.note||''];
   const sheet=list=>{const ws=XLSX.utils.aoa_to_sheet([hdr,...list.map(toRow)]);
-    ws['!cols']=[6,11,11,10,12,8,10,10,10,8,7,7,30].map(w=>({wch:w}));return ws;};
+    ws['!cols']=[6,11,11,10,12,8,10,10,10,6,6,8,30].map(w=>({wch:w}));return ws;};
   const all=sortCases([...cases]).sort((a,b)=>BRANCHES.indexOf(a.branch)-BRANCHES.indexOf(b.branch));
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,sheet(all),'全部');
-  BRANCHES.forEach(br=>XLSX.utils.book_append_sheet(wb,sheet(all.filter(c=>c.branch===br)),br));
-  XLSX.writeFile(wb,`口碑案例_${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
+  const wb=XLSX.utils.book_new(), brs=myBranches();
+  if(brs.length>1)XLSX.utils.book_append_sheet(wb,sheet(all),'全部');
+  brs.forEach(br=>XLSX.utils.book_append_sheet(wb,sheet(all.filter(c=>c.branch===br)),br));
+  const who=SESSION&&SESSION.branch?SESSION.branch+'_':'';
+  XLSX.writeFile(wb,`口碑案例_${who}${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
   toast(`↓ 已匯出 ${cases.length} 筆`);
 }
 
 async function doShot(){
-  if(typeof html2canvas==='undefined'){toast('截圖功能尚未載入，請稍候再試');return;}
   let name, target;
   if(S.view==='branch'){name=`口碑案例_${S.branch}_${S.year}_${S.month?S.month+'月':'全部'}`;target=$('#app');}
   else if(S.view==='stats'){name=`口碑案例_每月統計_${S.year}`;target=$('#shot-area');}
@@ -931,7 +988,7 @@ async function shotEl(target,name){
 }
 
 let tt;
-function toast(msg){const el=$('#toast');el.textContent=msg;el.style.display='block';clearTimeout(tt);tt=setTimeout(()=>el.style.display='none',2800);}
+function toast(msg){const el=$('#toast');el.textContent=msg;el.style.display='block';clearTimeout(tt);tt=setTimeout(()=>el.style.display='none',3000);}
 
 // ══════════════════════════════════════════
 //  EVENTS
@@ -949,13 +1006,18 @@ $('#fl-grade').innerHTML='<option value="">所有授權等級</option>'+GRADES.m
 $('#fl-status').innerHTML='<option value="">所有狀態</option>'+STATUSES.map(s=>`<option>${s}</option>`).join('');
 $('#fl-grade').addEventListener('change',e=>{S.grade=e.target.value;render();});
 $('#fl-status').addEventListener('change',e=>{S.status=e.target.value;render();});
-$('#fl-search').addEventListener('input',e=>{S.q=e.target.value;renderCases();hydrate($('#content'));});
+$('#fl-search').addEventListener('input',e=>{S.q=e.target.value;renderCases();});
 $('#board-period').addEventListener('change',e=>{S.board=e.target.value;render();});
-$('#role-sel').addEventListener('change',e=>{S.role=e.target.value;prefs(true);render();});
-$('#btn-add').addEventListener('click',()=>canEdit()&&openCase(null));
-$('#btn-import').addEventListener('click',()=>canEdit()&&$('#import-file').click());
+$('#hright').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  if(b.id==='btn-add')openCase(null);
+  else if(b.id==='btn-import')$('#import-file').click();
+  else if(b.id==='btn-export')doExport();
+  else if(b.id==='btn-pw')openPasswords();
+  else if(b.id==='btn-publish')publish();
+  else if(b.id==='btn-logout'){try{sessionStorage.removeItem('koubei_session');}catch(err){}location.reload();}
+});
 $('#import-file').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';importFiles(fs);});
-$('#btn-export').addEventListener('click',doExport);
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-shot]'))doShot();
   const b=e.target.closest('[data-shot-el]');
@@ -963,32 +1025,68 @@ document.addEventListener('click',e=>{
 });
 
 $('#content').addEventListener('click',async e=>{
-  const cb=e.target.closest('[data-card]');
+  const cb=e.target.closest('[data-flag]');
   if(cb){
     e.stopPropagation();
     if(!canEdit()){e.preventDefault();return;}
-    const c=cases.find(x=>x.id===cb.dataset.card); if(!c)return;
-    c.card=cb.checked; c.updatedAt=Date.now();
-    try{await persist([c]);}catch(err){cb.checked=!cb.checked;c.card=cb.checked;}
+    const c=cases.find(x=>x.id===cb.dataset.id); if(!c)return;
+    const f=cb.dataset.flag; c[f]=cb.checked; c.updatedAt=Date.now();
+    try{await persist([c]);}catch(err){cb.checked=!cb.checked;c[f]=cb.checked;}
     return;
   }
   if(e.target.closest('label'))return;
-  const lb=e.target.closest('[data-lightbox]');
-  if(lb){openLightbox(lb.dataset.lightbox);return;}
   const row=e.target.closest('[data-open]');
   if(row)openCase(row.dataset.open);
 });
+// 唯讀模式下點勾選框不要打開案例
+$('#content').addEventListener('mousedown',e=>{if(e.target.closest('[data-flag]:disabled'))e.stopPropagation();});
 
 // ══════════════════════════════════════════
 //  START
 // ══════════════════════════════════════════
+async function loadEnc(){
+  const r=await fetch('data.enc.json?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('nodata');
+  return r.json();
+}
+function startSession(d){
+  SESSION={id:d.id,label:d.label,branch:d.branch,updatedAt:d.updatedAt};
+  cases=d.cases||[]; allRows=d.all||null;
+  if(d.branch)S.branch=d.branch;
+  $('#login').hidden=true; $('#app').hidden=false;
+  renderHeader(); render();
+}
+
 (async function init(){
   prefs(false);
-  const role=new URLSearchParams(location.search).get('role');
-  if(role==='viewer'){S.role='viewer';$('#role-sel').hidden=true;}
-  try{await DB.open();cases=await DB.allCases();}
-  catch(e){setSaveLabel('● 無法使用本機儲存','#C0394A');notice('無法開啟本機儲存',`<p style="font-size:12px">這個瀏覽器不允許儲存資料（可能是無痕模式）。資料不會被保存。<br>${esc(e.message)}</p>`);}
-  render();
+  if(ADMIN){
+    try{await DB.open();cases=await DB.allCases();}
+    catch(e){notice('無法開啟本機儲存',`<p class="notice-sub">這個瀏覽器不允許儲存資料（可能是無痕模式），資料不會被保存。</p>`);}
+    $('#app').hidden=false; renderHeader(); updateAdminLabel(); render();
+    return;
+  }
+  let file=null;
+  try{file=await loadEnc();}catch(e){}
+  let saved=null; try{saved=JSON.parse(sessionStorage.getItem('koubei_session')||'null');}catch(e){}
+  if(file&&saved&&saved.updatedAt===file.updatedAt){startSession(saved);return;}
+  $('#login').hidden=false;
+  $('#lg-note').textContent=file?`資料更新：${fmtTime(file.updatedAt)}`:'網站目前還沒有資料。';
+  if(saved&&file)$('#lg-err').textContent='資料已更新，請重新登入。';
+  $('#lg-acc').focus();
+  $('#login-form').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const acc=$('#lg-acc').value, pw=$('#lg-pw').value, btn=$('#lg-btn');
+    if(!file){$('#lg-err').textContent='網站目前還沒有資料。';return;}
+    if(!acc.trim()||!pw){$('#lg-err').textContent='請輸入帳號和密碼。';return;}
+    btn.disabled=true; btn.textContent='登入中…'; $('#lg-err').textContent='';
+    try{
+      const d=await loginDecrypt(file,acc,pw);
+      try{sessionStorage.setItem('koubei_session',JSON.stringify(d));}catch(err){}
+      startSession(d);
+    }catch(err){
+      $('#lg-err').textContent='帳號或密碼錯誤。'; $('#lg-pw').value=''; $('#lg-pw').focus();
+    }finally{btn.disabled=false; btn.textContent='登入';}
+  });
 })();
 </script>
 </body>

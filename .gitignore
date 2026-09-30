@@ -8,3 +8,6 @@
 *.png
 *.heic
 *.json
+
+# 加密後的網站資料（可以公開）
+!data.enc.json
