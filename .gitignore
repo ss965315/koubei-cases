@@ -1,0 +1,10 @@
+# 絕對不要把顧客資料、報表、照片放進 repo
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.jpg
+*.jpeg
+*.png
+*.heic
+*.json

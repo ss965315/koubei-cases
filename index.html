@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>【口碑案例優化】各店案例管理</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700;900&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+--bg:#F4F2ED; --surface:#FFF; --surface2:#F9F7F3; --border:#DDD8CF; --border2:#C8C2B5;
+--text:#1C1A17; --text2:#5C5750; --text3:#9C9690;
+--accent:#2D4A3E; --accent-l:#E4EDE9;
+--pink:#C0394A; --pink-bg:#FFF0F2; --pink-border:#F0C0C8;
+--ok:#1B5C3A; --ok-bg:#E4EDE9; --warn:#B45F06; --warn-bg:#FEF3E6; --mute:#8C8781; --mute-bg:#EFEDE8;
+--mono:'DM Mono',monospace;
+--brand-red:#EC3F43; --brand-red-dark:#C22026; --brand-gold:#D9A66C;
+--brand-rose-bg:#FFF0F2; --brand-rose-border:#F3C9CE;
+--gold:#E8C877; --silver:#C9CDD3; --bronze:#E3B08C;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button,input,select,textarea{font-family:inherit}
+[hidden]{display:none!important}
+
+/* header */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;min-height:50px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.hlogo{display:flex;align-items:center;gap:8px}
+.htitle{font-size:13px;font-weight:700;color:var(--accent)}
+.hsub{font-size:10px;color:var(--text3);margin-left:8px}
+.hright{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0}
+.role-sel{font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text2)}
+
+/* tabs */
+.branch-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:flex-end;padding:0 20px;overflow-x:auto;position:sticky;top:50px;z-index:190}
+.btab{padding:9px 16px 8px;font-size:12px;font-weight:500;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;transition:all .13s}
+.btab:hover{color:var(--text)}
+.btab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.btab small{font-size:10px;color:var(--text3);margin-left:3px}
+.btab.stab{color:var(--text2);border-left:1px solid var(--border);padding-left:16px}
+.btab.stab.first{margin-left:auto}
+.btab.stab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.btab.board-tab{color:var(--brand-red-dark)}
+.btab.board-tab.active{color:var(--brand-red);border-bottom-color:var(--brand-red)}
+.month-bar{padding:10px 20px 0;display:flex;gap:4px;align-items:flex-end;flex-wrap:wrap;background:var(--surface);border-bottom:1px solid var(--border)}
+.year-sel{font-size:12px;font-weight:700;padding:4px 8px;margin:0 8px 6px 0;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--accent)}
+.mbtn{padding:4px 12px 8px;font-size:11px;font-weight:500;cursor:pointer;background:transparent;color:var(--text3);border:none;border-bottom:2px solid transparent;white-space:nowrap}
+.mbtn:hover{color:var(--text)}
+.mbtn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.mbtn small{font-size:9px;color:var(--text3);margin-left:2px}
+
+/* toolbar */
+.toolbar{display:flex;gap:8px;align-items:center;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.tl{display:flex;gap:6px;align-items:center;flex:1;flex-wrap:wrap}
+.tr{display:flex;gap:6px;align-items:center}
+.vt{display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.vtb{padding:5px 11px;font-size:11px;cursor:pointer;background:var(--surface);border:none;color:var(--text2)}
+.vtb.active{background:var(--accent);color:#fff}
+.fsel,.fsearch{font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)}
+.fsearch{width:190px}
+.count-lbl{font-size:11px;color:var(--text3)}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);font-size:12px;cursor:pointer;transition:all .12s;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--bg);border-color:var(--border2)}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover:not(:disabled){background:#1F3529}
+.btn-danger{color:var(--pink)}
+.btn-danger:hover:not(:disabled){background:var(--pink-bg)}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-icon{padding:5px 7px}
+
+/* list */
+.main-content{padding:16px 20px 48px}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surface2);padding:8px 10px;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap;text-align:left}
+td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+.case-table tbody tr{cursor:pointer}
+.case-table tbody tr:hover td{background:#FAFAF8}
+.tdr,.thr{text-align:right}
+.tdc,.thc{text-align:center}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);font-size:11px;color:var(--text2)}
+.thumb{width:40px;height:40px;border-radius:5px;object-fit:cover;display:block;border:1px solid var(--border);background:var(--surface2)}
+.thumb-empty{width:40px;height:40px;border-radius:5px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:14px}
+.cb{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+.cb:disabled{cursor:not-allowed}
+
+/* badges */
+.g{display:inline-block;min-width:26px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid transparent}
+.g-S{background:#F3E8FB;color:#6B2A9A;border-color:#DCC3EE}
+.g-A{background:#EEF3FB;color:#1A3A6C;border-color:#B8CEDE}
+.g-B{background:#E4EDE9;color:#1B5C3A;border-color:#B8D4C4}
+.g-C{background:#FEF8EC;color:#7A5800;border-color:#DFC07A}
+.g-D{background:#F4F2ED;color:#6B6560;border-color:#C8C2B5}
+.g-none{font-family:'Noto Sans TC',sans-serif;font-weight:400;color:var(--text3);background:transparent;border-color:var(--border)}
+.st{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.st-ok{background:var(--ok-bg);color:var(--ok)}
+.st-warn{background:var(--warn-bg);color:var(--warn)}
+.st-cancel{background:var(--mute-bg);color:var(--mute);text-decoration:line-through}
+tr.is-cancel td{color:var(--mute)}
+
+/* cards */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.dc{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s}
+.dc:hover{box-shadow:0 4px 14px rgba(0,0,0,.1)}
+.dc-photos{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.dc-ph{aspect-ratio:1;background:var(--surface2);position:relative;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px}
+.dc-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.dc-ph span{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.5);color:#fff;font-size:10px;padding:1px 6px;border-radius:3px}
+.dc-body{padding:10px 12px}
+.dc-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.dc-name{font-size:14px;font-weight:700}
+.dc-meta{font-size:11px;color:var(--text2);line-height:1.7}
+.dc-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)}
+.dc-foot label{display:flex;align-items:center;gap:5px;cursor:pointer}
+
+.empty{padding:56px 20px;text-align:center;color:var(--text3)}
+.empty-ico{font-size:32px;margin-bottom:10px;display:block}
+.empty p{font-size:12px}
+
+/* stats */
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
+.sec-title{font-size:15px;font-weight:700;color:var(--accent)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.scard-lbl{font-size:10px;color:var(--text3);letter-spacing:.04em;margin-bottom:4px}
+.scard-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.scard-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.panel-h{padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--accent)}
+.panel-b{padding:14px}
+.bars{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;align-items:end;height:190px}
+.bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+.bar-v{font-family:var(--mono);font-size:11px;color:var(--text2)}
+.bar{width:100%;max-width:38px;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.bar.zero{background:var(--border)}
+.bar-l{font-size:10px;color:var(--text3)}
+.mtable{width:100%;border-collapse:collapse;font-size:12px}
+.mtable th{text-align:center}
+.mtable th:first-child{text-align:left}
+.mtable td{text-align:center;font-family:var(--mono)}
+.mtable td:first-child{text-align:left;font-family:'Noto Sans TC',sans-serif;font-weight:500}
+.mtable tr.total td{background:var(--surface2);font-weight:700;border-top:2px solid var(--border2)}
+.mtable td.tot{font-weight:700;background:var(--surface2)}
+.ovx{overflow-x:auto}
+
+/* board */
+.board-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.board-wrap{background:#fff;border:1px solid var(--brand-rose-border);border-radius:16px;overflow:hidden;box-shadow:0 6px 28px rgba(236,63,67,.10)}
+.board-head{padding:26px 28px 22px;background:linear-gradient(120deg,var(--brand-red-dark) 0%,var(--brand-red) 45%,var(--brand-gold) 135%);color:#fff;position:relative;overflow:hidden}
+.board-head::after{content:'';position:absolute;right:-40px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%)}
+.board-head-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;opacity:.85;margin-bottom:8px}
+.board-head-title{font-family:'Noto Serif TC',serif;font-weight:900;font-size:22px;margin-bottom:6px;text-shadow:0 2px 10px rgba(0,0,0,.12);line-height:1.4}
+.board-head-sub{font-size:12px;opacity:.95;line-height:1.6}
+.board-body{padding:20px 22px 8px}
+.board-col-title{font-size:13px;font-weight:700;color:var(--brand-red-dark);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline}
+.board-col-title small{font-size:10px;color:var(--text3);font-weight:400}
+.board-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border)}
+.board-row.top1{background:linear-gradient(90deg,#FFF3D6,#FFFDF7);border-color:#E8C877;box-shadow:0 3px 14px rgba(217,166,108,.28)}
+.board-row.top2{background:linear-gradient(90deg,#F1F2F5,#FDFDFE);border-color:#C9CDD3}
+.board-row.top3{background:linear-gradient(90deg,#FBE6D6,#FFFAF5);border-color:#E3B08C}
+.board-rank{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;background:var(--surface);color:var(--text2);flex-shrink:0;border:1px solid var(--border)}
+.top1 .board-rank{background:var(--gold);color:#5B4300;border-color:#D9A66C}
+.top2 .board-rank{background:var(--silver);color:#3D4046;border-color:#AEB2B8}
+.top3 .board-rank{background:var(--bronze);color:#5A3117;border-color:#C88F62}
+.board-name-wrap{flex:1;min-width:0}
+.board-name{font-size:14px;font-weight:700}
+.board-branch-tag{display:inline-block;font-size:10px;font-weight:500;color:var(--brand-red-dark);background:var(--brand-rose-bg);border:1px solid var(--brand-rose-border);border-radius:20px;padding:1px 9px;margin-left:6px;vertical-align:2px}
+.board-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.board-count-wrap{text-align:right;flex-shrink:0;line-height:1.1}
+.board-count{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--brand-red-dark)}
+.top1 .board-count{font-size:25px}
+.board-count-lbl{font-size:9px;color:var(--text3)}
+.board-foot{padding:14px 24px 20px;text-align:center;font-size:11px;color:var(--text2);border-top:1px dashed var(--border);margin-top:6px}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--surface);border-radius:10px;width:100%;max-width:620px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-h{padding:14px 18px 11px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.modal-t{font-size:14px;font-weight:700}
+.modal-b{padding:16px 18px;overflow-y:auto}
+.modal-f{padding:11px 18px 14px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.modal-f .grow{flex:1}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}
+.fg label{font-size:11px;font-weight:500;color:var(--text2)}
+.fg input,.fg select,.fg textarea{padding:7px 10px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text);background:var(--surface);width:100%}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(45,74,62,.08)}
+.fg input:disabled,.fg select:disabled,.fg textarea:disabled{background:var(--surface2);color:var(--text);opacity:1}
+.fg textarea{min-height:64px;resize:vertical}
+.fg-full{grid-column:1/-1}
+.fg-check{flex-direction:row;align-items:center;gap:8px;padding-top:20px}
+.sec-lbl{font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--text3);padding-bottom:7px;border-bottom:1px solid var(--border);margin:4px 0 12px}
+.req{color:var(--pink)}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pslot{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.pslot-h{padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);background:var(--surface2);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.pbox{aspect-ratio:4/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;text-align:center;padding:0}
+.pbox img{width:100%;height:100%;object-fit:contain;display:block;background:#222}
+.pbtns{display:flex;gap:6px;padding:7px 10px}
+.hint{font-size:10px;color:var(--text3);margin-top:8px;line-height:1.6}
+.lb{background:#141414;border-radius:10px;width:100%;max-width:1200px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.lb-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;color:#eee;font-size:13px;gap:8px}
+.lb-h .btn{background:#2a2a2a;color:#eee;border-color:#444}
+.lb-b{display:grid;grid-template-columns:1fr 1fr;gap:2px;flex:1;min-height:0}
+.lb-b figure{position:relative;display:flex;align-items:center;justify-content:center;min-height:300px;background:#000}
+.lb-b img{max-width:100%;max-height:82vh;object-fit:contain;display:block}
+.lb-b figcaption{position:absolute;left:10px;top:10px;background:rgba(255,255,255,.9);color:#111;font-size:11px;font-weight:700;padding:2px 9px;border-radius:3px}
+.lb-b .nophoto{color:#777;font-size:12px}
+.notice-list{font-size:13px;line-height:2}
+.notice-list b{font-family:var(--mono);font-size:15px}
+.notice-sub{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:8px 15px;border-radius:7px;font-size:12px;z-index:999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:80vw}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
+
+@media (max-width:760px){
+  .header,.branch-bar,.month-bar,.toolbar,.main-content{padding-left:16px;padding-right:16px}
+  .branch-bar{top:0;position:static}
+  .header{position:static}
+  .fgrid,.pgrid,.board-grid,.lb-b{grid-template-columns:1fr}
+  .fsearch{width:100%}
+  .bars{gap:3px}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+<div class="header">
+  <div class="hlogo">
+    <span style="font-size:17px">🏥</span>
+    <span class="htitle">【口碑案例優化】各店案例管理</span>
+    <span class="hsub" id="save-lbl">● 本機儲存</span>
+  </div>
+  <div class="hright no-shot">
+    <select class="role-sel" id="role-sel" title="權限">
+      <option value="editor">✎ 編輯者</option>
+      <option value="viewer">👁 檢視者</option>
+    </select>
+    <button class="btn" id="btn-import" data-edit>📥 匯入報表</button>
+    <button class="btn btn-primary" id="btn-add" data-edit>＋ 新增案例</button>
+    <button class="btn" id="btn-export">↓ 匯出 XLSX</button>
+  </div>
+</div>
+
+<nav class="branch-bar" id="branch-bar"></nav>
+<div class="month-bar" id="month-bar"></div>
+
+<div class="toolbar" id="case-toolbar">
+  <div class="tl">
+    <div class="vt">
+      <button class="vtb" data-layout="list">☰ 清單</button>
+      <button class="vtb" data-layout="card">⊞ 卡片</button>
+    </div>
+    <select class="fsel" id="fl-grade"></select>
+    <select class="fsel" id="fl-status"></select>
+    <input type="search" class="fsearch" id="fl-search" placeholder="搜尋姓名 / 代碼 / 諮詢師">
+  </div>
+  <div class="tr">
+    <span class="count-lbl" id="count-lbl"></span>
+    <button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button>
+  </div>
+</div>
+
+<div class="toolbar" id="board-toolbar">
+  <div class="tl">
+    <span style="font-size:12px;color:var(--text2)">期間</span>
+    <select class="fsel" id="board-period"></select>
+  </div>
+  <div class="tr"><button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button></div>
+</div>
+
+<main class="main-content" id="content"></main>
+</div>
+
+<div id="overlay-root"></div>
+<input type="file" id="import-file" accept=".xlsx,.xls,.xlsm,.csv" multiple hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════
+const BRANCHES=['仁愛','桃園','向上','巨蛋','竹北','北屯'];
+const GRADES=['S','A','B','C','D'];
+const STATUSES=['進行中','待術後照','素材整理中','已完成','取消'];
+const PHOTO_MAX=1600, PHOTO_Q=0.85;
+// 各分院負責組員（每月統計 KPI 表用）
+const FIXED_STAFF={仁愛:'蔡忻宸',桃園:'陳涵',向上:'王喬儀',巨蛋:'林采蓁',北屯:'劉芳瑜'};
+const staffOf=(br,y,m)=>br==='竹北'?((y>2026||(y===2026&&m>=6))?'高麗雯':'謝昀溱'):(FIXED_STAFF[br]||'');
+// KPI：2026/6 起「總計≥3 且 S 級≥1」；之前「總計≥3 且 S 或 A 級≥1」
+// （對應原版：全臉公開＝S、匿名公開＝A）
+const isNewKPI=(y,m)=>y>2026||(y===2026&&m>=6);
+function kpiOf(list,y,m){
+  const s=list.filter(c=>c.grade==='S').length, a=list.filter(c=>c.grade==='A').length, n=list.length;
+  const neu=isNewKPI(y,m), ok=neu?(n>=3&&s>=1):(n>=3&&s+a>=1);
+  return {s,a,n,ok,why:ok?'':n<3?'案例不足':neu?'缺 S 級':'缺 S 或 A 級'};
+}
+const NOW=new Date(), CUR_Y=NOW.getFullYear(), CUR_M=NOW.getMonth()+1;
+const pad=n=>String(n).padStart(2,'0');
+
+const S={view:'branch',branch:BRANCHES[0],year:CUR_Y,month:0,layout:'list',grade:'',status:'',q:'',
+  board:`M:${CUR_Y}-${pad(CUR_M)}`,role:'editor'};
+let cases=[];
+const photoCache=new Map();
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>(Number(n)||0).toLocaleString('zh-TW');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+const canEdit=()=>S.role==='editor';
+const isSA=c=>c.grade==='S'||c.grade==='A';
+const yearOf=c=>c.saleDate?+c.saleDate.slice(0,4):null;
+const monthOf=c=>c.saleDate?+c.saleDate.slice(5,7):null;
+
+// ══════════════════════════════════════════
+//  STORAGE (IndexedDB：案例 + 照片)
+// ══════════════════════════════════════════
+const DB={
+  db:null,
+  open(){return new Promise((res,rej)=>{
+    const r=indexedDB.open('koubei-cases',1);
+    r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('cases',{keyPath:'id'});d.createObjectStore('photos');};
+    r.onsuccess=()=>{this.db=r.result;res();};
+    r.onerror=()=>rej(r.error);
+  });},
+  mem:{cases:new Map(),photos:new Map()},   // 無法使用 IndexedDB 時的暫存（重整即清空）
+  run(store,mode,fn){
+    if(!this.db){
+      const m=this.mem[store], kp=store==='cases';
+      const s={getAll:()=>({result:[...m.values()]}),get:k=>({result:m.get(k)}),delete:k=>{m.delete(k);return {};},
+        put:(v,k)=>{m.set(kp?v.id:k,v);return {};}};
+      const req=fn(s); return Promise.resolve(req&&'result' in req?req.result:undefined);
+    }
+    return new Promise((res,rej)=>{
+    const t=this.db.transaction(store,mode), s=t.objectStore(store);
+    const req=fn(s);
+    t.oncomplete=()=>res(req&&'result' in req?req.result:undefined);
+    t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
+  });},
+  allCases(){return this.run('cases','readonly',s=>s.getAll());},
+  putCases(list){return this.run('cases','readwrite',s=>{list.forEach(c=>s.put(c));});},
+  delCase(id){return this.run('cases','readwrite',s=>s.delete(id));},
+  getPhoto(id){return this.run('photos','readonly',s=>s.get(id));},
+  putPhoto(id,blob){return this.run('photos','readwrite',s=>s.put(blob,id));},
+  delPhoto(id){if(!id)return Promise.resolve();photoCache.delete(id);return this.run('photos','readwrite',s=>s.delete(id));},
+};
+
+async function persist(list){
+  setSaveLabel('● 儲存中…','#B8860B');
+  try{await DB.putCases(list);DB.db?setSaveLabel('● 本機儲存',''):setSaveLabel('● 暫存中（重整即清空）','#C0394A');}
+  catch(e){setSaveLabel('● 儲存失敗','#C0394A');toast('儲存失敗：'+e.message);throw e;}
+}
+function setSaveLabel(t,color){const el=$('#save-lbl');el.textContent=t;el.style.color=color||'';}
+
+async function photoURL(pid){
+  if(!pid)return null;
+  if(photoCache.has(pid))return photoCache.get(pid);
+  const b=await DB.getPhoto(pid); if(!b)return null;
+  const u=URL.createObjectURL(b); photoCache.set(pid,u); return u;
+}
+function hydrate(root=document){
+  root.querySelectorAll('img[data-pid]:not([src])').forEach(async img=>{
+    const u=await photoURL(img.dataset.pid); if(u)img.src=u;
+  });
+}
+
+function prefs(save){
+  try{
+    if(save){localStorage.setItem('koubei_prefs',JSON.stringify({branch:S.branch,layout:S.layout,role:S.role}));return;}
+    const p=JSON.parse(localStorage.getItem('koubei_prefs')||'{}');
+    if(BRANCHES.includes(p.branch))S.branch=p.branch;
+    if(p.layout==='card'||p.layout==='list')S.layout=p.layout;
+    if(p.role==='viewer'||p.role==='editor')S.role=p.role;
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════
+//  RENDER：共用
+// ══════════════════════════════════════════
+function yearsList(){
+  const ys=new Set([CUR_Y]); cases.forEach(c=>{const y=yearOf(c);if(y)ys.add(y);});
+  return [...ys].sort((a,b)=>b-a);
+}
+const gradeBadge=g=>g?`<span class="g g-${g}">${g}</span>`:`<span class="g g-none">未填</span>`;
+const statusCls=s=>s==='已完成'?'st-ok':s==='取消'?'st-cancel':'st-warn';
+const statusBadge=s=>s?`<span class="st ${statusCls(s)}">${esc(s)}</span>`:'<span style="color:var(--text3)">—</span>';
+const sortCases=list=>list.sort((a,b)=>(b.saleDate||'').localeCompare(a.saleDate||'')||(b.createdAt||0)-(a.createdAt||0));
+
+function render(){
+  // 分院分頁
+  $('#branch-bar').innerHTML=BRANCHES.map(b=>{
+    const n=cases.filter(c=>c.branch===b).length;
+    return `<button class="btab ${S.view==='branch'&&S.branch===b?'active':''}" data-branch="${b}">${b}${n?`<small>(${n})</small>`:''}</button>`;
+  }).join('')+
+  `<button class="btab stab first ${S.view==='stats'?'active':''}" data-view="stats">📊 每月統計</button>`+
+  `<button class="btab stab board-tab ${S.view==='board'?'active':''}" data-view="board">🏆 戰情榜</button>`;
+
+  // 年度＋月份
+  const ys=yearsList(); if(!ys.includes(S.year))S.year=ys[0];
+  let mb=`<select class="year-sel" id="year-sel">${ys.map(y=>`<option value="${y}" ${y===S.year?'selected':''}>${y} 年</option>`).join('')}</select>`;
+  if(S.view==='branch'){
+    const inB=cases.filter(c=>c.branch===S.branch&&yearOf(c)===S.year);
+    mb+=[0,1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
+      const n=m?inB.filter(c=>monthOf(c)===m).length:0;
+      return `<button class="mbtn ${S.month===m?'active':''}" data-month="${m}">${m?m+'月':'全部'}${n?`<small>${n}</small>`:''}</button>`;
+    }).join('');
+  } else mb+=`<span style="font-size:11px;color:var(--text3);padding:0 0 12px">依銷售日統計</span>`;
+  $('#month-bar').innerHTML=mb;
+  $('#month-bar').hidden=S.view==='board';
+  $('#case-toolbar').hidden=S.view!=='branch';
+  $('#board-toolbar').hidden=S.view!=='board';
+
+  // 權限
+  $('#role-sel').value=S.role;
+  document.querySelectorAll('[data-edit]').forEach(b=>{b.disabled=!canEdit();b.title=canEdit()?'':'檢視者無此權限';});
+
+  if(S.view==='branch')renderCases();
+  else if(S.view==='stats')renderStats();
+  else renderBoard();
+  hydrate($('#content'));
+}
+
+// ══════════════════════════════════════════
+//  RENDER：案例清單 / 卡片
+// ══════════════════════════════════════════
+function filteredCases(){
+  const q=S.q.trim().toLowerCase();
+  return sortCases(cases.filter(c=>{
+    if(c.branch!==S.branch)return false;
+    if(c.saleDate){
+      if(yearOf(c)!==S.year)return false;
+      if(S.month&&monthOf(c)!==S.month)return false;
+    } else if(S.month) return false;          // 未填銷售日：只在「全部」顯示
+    if(S.grade==='-'?c.grade:S.grade&&c.grade!==S.grade)return false;
+    if(S.status&&c.status!==S.status)return false;
+    if(q&&![c.name,c.code,c.consultant].some(v=>(v||'').toLowerCase().includes(q)))return false;
+    return true;
+  }));
+}
+
+function renderCases(){
+  document.querySelectorAll('.vtb').forEach(b=>b.classList.toggle('active',b.dataset.layout===S.layout));
+  const list=filteredCases();
+  $('#count-lbl').textContent=`共 ${list.length} 筆`;
+  const hasAny=cases.some(c=>c.branch===S.branch);
+  const emptyMsg=hasAny?'沒有符合條件的案例':'此分院尚無案例';
+  const ro=canEdit()?'':'disabled';
+  const thumb=(c,k)=>c[k]?`<img class="thumb" data-pid="${c[k]}" data-lightbox="${c.id}" alt="">`:`<div class="thumb-empty">＋</div>`;
+
+  if(S.layout==='list'){
+    $('#content').innerHTML=`<div class="table-wrap"><table class="case-table"><thead><tr>
+      <th class="thc">術前</th><th class="thc">術後</th><th>#</th><th>銷售日</th><th>手術日</th><th>顧客姓名</th><th>顧客代碼</th>
+      <th>授權等級</th><th class="thr">折讓金額</th><th>分院</th><th>諮詢師</th><th>狀態</th><th class="thc">櫃檯開卡</th>
+      </tr></thead><tbody>${list.length?list.map((c,i)=>`<tr data-open="${c.id}" class="${c.status==='取消'?'is-cancel':''}">
+        <td>${thumb(c,'photoBefore')}</td><td>${thumb(c,'photoAfter')}</td>
+        <td class="mono" style="color:var(--text3);font-size:10px">${i+1}</td>
+        <td class="mono" style="font-size:11px">${c.saleDate||'<span style="color:var(--text3)">未填</span>'}</td>
+        <td class="mono" style="font-size:11px">${c.surgeryDate||'—'}</td>
+        <td style="font-weight:500">${esc(c.name||'—')}</td>
+        <td><code>${esc(c.code||'—')}</code></td>
+        <td>${gradeBadge(c.grade)}</td>
+        <td class="tdr mono">$${fmt(c.discount)}</td>
+        <td style="font-size:11px;color:var(--text2)">${c.branch}</td>
+        <td style="font-size:11px">${esc(c.consultant||'—')}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td class="tdc"><input type="checkbox" class="cb" data-card="${c.id}" ${c.card?'checked':''} ${ro}></td>
+      </tr>`).join(''):`<tr><td colspan="13"><div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div></td></tr>`}
+      </tbody></table></div>`;
+  } else {
+    const ph=(c,k,l)=>`<div class="dc-ph">${c[k]?`<img data-pid="${c[k]}" data-lightbox="${c.id}" alt="">`:'尚無照片'}<span>${l}</span></div>`;
+    $('#content').innerHTML=list.length?`<div class="card-grid">${list.map(c=>`<div class="dc" data-open="${c.id}">
+      <div class="dc-photos">${ph(c,'photoBefore','術前')}${ph(c,'photoAfter','術後')}</div>
+      <div class="dc-body">
+        <div class="dc-top"><span class="dc-name">${esc(c.name||c.code||'—')}</span>${gradeBadge(c.grade)}</div>
+        <div class="dc-meta">
+          <code>${esc(c.code||'—')}</code>　諮詢師 ${esc(c.consultant||'—')}<br>
+          銷售 <span class="mono">${c.saleDate||'未填'}</span>　手術 <span class="mono">${c.surgeryDate||'—'}</span><br>
+          折讓 <span class="mono">$${fmt(c.discount)}</span>
+        </div>
+      </div>
+      <div class="dc-foot">${statusBadge(c.status)}<label><input type="checkbox" class="cb" data-card="${c.id}" ${c.card?'checked':''} ${ro}> 櫃檯開卡</label></div>
+    </div>`).join('')}</div>`:`<div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div>`;
+  }
+}
+
+// ══════════════════════════════════════════
+//  RENDER：每月統計
+// ══════════════════════════════════════════
+function renderStats(){
+  const yc=cases.filter(c=>yearOf(c)===S.year);
+  const n=yc.length, sa=yc.filter(isSA).length;
+  const disc=yc.reduce((s,c)=>s+(c.discount||0),0);
+  const done=yc.filter(c=>c.status==='已完成').length, carded=yc.filter(c=>c.card).length;
+  const brN=new Set(yc.map(c=>c.branch)).size;
+  const pct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
+  const tile=(l,v,s='')=>`<div class="scard"><div class="scard-lbl">${l}</div><div class="scard-val">${v}</div><div class="scard-sub">${s}</div></div>`;
+
+  const byM=Array.from({length:12},(_,i)=>yc.filter(c=>monthOf(c)===i+1).length);
+  const maxM=Math.max(1,...byM);
+  const cell=(br,m)=>yc.filter(c=>c.branch===br&&monthOf(c)===m).length;
+  const heat=BRANCHES.map(br=>Array.from({length:12},(_,i)=>cell(br,i+1)));
+  const maxH=Math.max(1,...heat.flat());
+  const heatTd=v=>{if(!v)return '<td style="color:var(--border2)">·</td>';const a=.12+.78*v/maxH;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
+
+  $('#content').innerHTML=`<div id="shot-area">
+    <div class="sec-head"><span class="sec-title">📊 ${S.year} 年 每月統計</span><button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button></div>
+    <div class="stat-grid">
+      ${tile('年度案例數',n,'依銷售日歸年')}
+      ${tile('有案例的分院',`${brN}<span style="font-size:13px;color:var(--text3)"> / ${BRANCHES.length}</span>`,'')}
+      ${tile('S＋A 級',sa,`高授權占比 ${pct(sa,n)}`)}
+      ${tile('折讓金額合計','$'+fmt(disc),'')}
+      ${tile('平均每案折讓','$'+fmt(n?Math.round(disc/n):0),'合計 ÷ 案例數')}
+      ${tile('已完成',done,`完成率 ${pct(done,n)}`)}
+      ${tile('櫃檯已開卡',carded,`開卡率 ${pct(carded,n)}`)}
+    </div>
+    <div class="panel"><div class="panel-h">各月案例數（全分院合計）</div><div class="panel-b">
+      <div class="bars">${byM.map((v,i)=>`<div class="bar-col"><span class="bar-v">${v||''}</span><div class="bar ${v?'':'zero'}" style="height:${v?Math.max(4,v/maxM*150):2}px"></div><span class="bar-l">${i+1}月</span></div>`).join('')}</div>
+    </div></div>
+    <div class="panel"><div class="panel-h">分院 × 月份</div><div class="ovx"><table class="mtable">
+      <thead><tr><th>分院</th>${byM.map((_,i)=>`<th>${i+1}月</th>`).join('')}<th>合計</th></tr></thead>
+      <tbody>${BRANCHES.map((br,bi)=>`<tr><td>${br}</td>${heat[bi].map(heatTd).join('')}<td class="tot">${heat[bi].reduce((a,b)=>a+b,0)}</td></tr>`).join('')}
+      <tr class="total"><td>合計</td>${byM.map(v=>`<td>${v}</td>`).join('')}<td>${n}</td></tr></tbody>
+    </table></div></div>
+    <div class="panel"><div class="panel-h">分院 × 授權等級</div><div class="ovx"><table class="mtable">
+      <thead><tr><th>分院</th>${GRADES.map(g=>`<th>${g}</th>`).join('')}<th>未填</th><th>案例數</th><th>折讓金額</th><th>已完成</th><th>開卡率</th></tr></thead>
+      <tbody>${[...BRANCHES,null].map(br=>{
+        const bc=br?yc.filter(c=>c.branch===br):yc;
+        const cnt=g=>bc.filter(c=>(c.grade||'')===g).length;
+        const k=bc.filter(c=>c.card).length;
+        return `<tr class="${br?'':'total'}"><td>${br||'合計'}</td>${GRADES.map(g=>`<td>${cnt(g)||''}</td>`).join('')}<td>${cnt('')||''}</td>
+          <td style="font-weight:700">${bc.length}</td><td>$${fmt(bc.reduce((s,c)=>s+(c.discount||0),0))}</td>
+          <td>${bc.filter(c=>c.status==='已完成').length}</td><td>${pct(k,bc.length)}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div></div>
+    ${kpiSection(yc)}
+  </div>`;
+}
+
+function kpiSection(yc){
+  const months=[...new Set(yc.map(monthOf))].sort((a,b)=>b-a);
+  if(!months.length)return '';
+  return `<div class="sec-head" style="margin-top:8px"><span class="sec-title">🎯 各月 KPI 達標（給泰迪協理）</span></div>`+months.map(m=>{
+    const y=S.year, rows=BRANCHES.map(br=>({br,staff:staffOf(br,y,m),...kpiOf(yc.filter(c=>c.branch===br&&monthOf(c)===m),y,m)}));
+    const okN=rows.filter(r=>r.ok).length, sum=k=>rows.reduce((t,r)=>t+r[k],0);
+    const rule=isNewKPI(y,m)?'總計≥3 且 S 級≥1':'總計≥3 且 S 或 A 級≥1';
+    return `<div class="panel kpi-panel">
+      <div class="panel-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--pink-bg);color:var(--pink);border-bottom-color:var(--pink-border)">
+        <span>📅 ${y} 年 ${m} 月 — 各院統計</span>
+        <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:400;background:var(--surface);padding:3px 10px;border-radius:20px;border:1px solid var(--pink-border)">KPI：${rule}｜達標 ${okN}／${BRANCHES.length} 間${okN===BRANCHES.length?' 🎉':''}</span>
+          <button class="btn btn-sm no-shot" data-shot-el="${y}年${m}月各院統計">📸 下載(jpg)</button>
+        </span>
+      </div>
+      <div class="ovx"><table class="mtable">
+        <thead><tr><th>分院</th><th style="text-align:left">組員姓名</th><th>S</th><th>A</th><th>其他</th><th>總計</th><th>KPI 達標</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr style="${r.ok?'':'background:#FFF8F8'}">
+          <td>${r.br}</td><td style="text-align:left;font-family:'Noto Sans TC',sans-serif">${esc(r.staff||'—')}</td>
+          <td>${r.s?`<b style="color:#6B2A9A">${r.s}</b>`:''}</td><td>${r.a?`<b style="color:#1A3A6C">${r.a}</b>`:''}</td>
+          <td>${(r.n-r.s-r.a)||''}</td><td style="font-weight:700">${r.n||''}</td>
+          <td style="font-family:'Noto Sans TC',sans-serif;font-size:11px">${r.ok?'<b style="color:var(--ok)">✅ 達標</b>':`<span style="color:var(--pink)">⚠️ ${r.why}</span>`}</td>
+        </tr>`).join('')}
+        <tr class="total"><td colspan="2">${m} 月總計</td><td>${sum('s')}</td><td>${sum('a')}</td><td>${sum('n')-sum('s')-sum('a')}</td><td>${sum('n')}</td>
+          <td style="font-family:'Noto Sans TC',sans-serif;font-size:11px">${okN}/${BRANCHES.length} 達標</td></tr>
+        </tbody></table></div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  RENDER：戰情榜
+// ══════════════════════════════════════════
+function boardPeriods(){
+  const ys=yearsList(), ms=new Set([`${CUR_Y}-${pad(CUR_M)}`]);
+  cases.forEach(c=>{if(c.saleDate)ms.add(c.saleDate.slice(0,7));});
+  return [{v:'all',l:'全部期間'},...ys.map(y=>({v:'Y:'+y,l:`${y} 年`})),
+    ...[...ms].sort().reverse().map(m=>({v:'M:'+m,l:`${m.slice(0,4)} 年 ${+m.slice(5)} 月`}))];
+}
+function inBoardPeriod(c){
+  if(S.board==='all')return true;
+  if(!c.saleDate)return false;
+  const [t,v]=S.board.split(':');
+  return t==='Y'?c.saleDate.startsWith(v+'-'):c.saleDate.startsWith(v);
+}
+function boardLabel(){return boardPeriods().find(p=>p.v===S.board)?.l||'';}
+
+function renderBoard(){
+  const ps=boardPeriods(); if(!ps.some(p=>p.v===S.board))S.board=ps[0].v;
+  $('#board-period').innerHTML=ps.map(p=>`<option value="${p.v}" ${p.v===S.board?'selected':''}>${p.l}</option>`).join('');
+  const pc=cases.filter(inBoardPeriod);
+  const rank=(a,b)=>b.n-a.n||b.sa-a.sa;
+  const brRows=BRANCHES.map(br=>{const l=pc.filter(c=>c.branch===br);return {name:br,n:l.length,sa:l.filter(isSA).length};}).sort(rank);
+  const cm=new Map();
+  pc.forEach(c=>{const nm=(c.consultant||'').trim(); if(!nm)return;
+    const k=c.branch+'|'+nm; if(!cm.has(k))cm.set(k,{name:nm,branch:c.branch,n:0,sa:0});
+    const r=cm.get(k); r.n++; if(isSA(c))r.sa++;});
+  const csRows=[...cm.values()].sort(rank).slice(0,10);
+  const medals=['🥇','🥈','🥉'];
+  const row=(r,i,tag)=>`<div class="board-row ${i<3?'top'+(i+1):''}">
+    <div class="board-rank">${i+1}</div>
+    <div class="board-name-wrap"><div class="board-name">${i<3?medals[i]+' ':''}${esc(r.name)}${tag?`<span class="board-branch-tag">${esc(r.branch)}</span>`:''}</div>
+    <div class="board-sub">S＋A 級 ${r.sa} 件</div></div>
+    <div class="board-count-wrap"><div class="board-count">${r.n}</div><div class="board-count-lbl">案例數</div></div></div>`;
+  const empty=t=>`<div class="empty" style="padding:30px 10px"><span class="empty-ico">🏆</span><p>${t}</p></div>`;
+  $('#content').innerHTML=`<div class="board-wrap" id="shot-area">
+    <div class="board-head">
+      <div class="board-head-eyebrow">MEGAIA · HONOR BOARD</div>
+      <div class="board-head-title">🏆 口碑案例戰情榜｜${esc(boardLabel())}</div>
+      <div class="board-head-sub">期間共 ${pc.length} 件案例，其中 S＋A 高授權 ${pc.filter(isSA).length} 件。排名依案例數，同數比 S＋A 級件數。</div>
+    </div>
+    <div class="board-body"><div class="board-grid">
+      <div><div class="board-col-title">分院排行 <small>六家全列</small></div>${brRows.map((r,i)=>row(r,i,false)).join('')}</div>
+      <div><div class="board-col-title">諮詢師排行 <small>前 10 名・跨分院分開計</small></div>${csRows.length?csRows.map((r,i)=>row(r,i,true)).join(''):empty('此期間尚無填寫諮詢師的案例')}</div>
+    </div></div>
+    <div class="board-foot">每一筆授權案例，都是美加最珍貴的真實口碑資產 ✨</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════
+//  OVERLAYS
+// ══════════════════════════════════════════
+function openOverlay(html,onClose){
+  const ov=document.createElement('div'); ov.className='overlay'; ov.innerHTML=html;
+  const close=()=>{ov.remove();document.removeEventListener('keydown',esc_);onClose&&onClose();};
+  const esc_=e=>{if(e.key==='Escape')close();};
+  ov.addEventListener('mousedown',e=>{if(e.target===ov)ov._down=true;});
+  ov.addEventListener('click',e=>{if(e.target===ov&&ov._down)close();ov._down=false;if(e.target.closest('[data-close]'))close();});
+  document.addEventListener('keydown',esc_);
+  $('#overlay-root').appendChild(ov); hydrate(ov);
+  return {el:ov,close};
+}
+function notice(title,body){
+  openOverlay(`<div class="modal" style="max-width:440px"><div class="modal-h"><span class="modal-t">${title}</span><button class="btn btn-icon" data-close>✕</button></div>
+  <div class="modal-b">${body}</div><div class="modal-f"><button class="btn btn-primary" data-close>知道了</button></div></div>`);
+}
+
+function openLightbox(id){
+  const c=cases.find(x=>x.id===id); if(!c)return;
+  const fig=(k,l)=>`<figure><figcaption>${l}</figcaption>${c[k]?`<img data-pid="${c[k]}" alt="${l}">`:'<div class="nophoto">尚無照片</div>'}</figure>`;
+  openOverlay(`<div class="lb"><div class="lb-h"><span><b>${esc(c.name||c.code)}</b>　${esc(c.code||'')}　${c.branch}　${c.saleDate||''}　${c.grade?c.grade+' 級':''}</span><button class="btn btn-sm" data-close>✕ 關閉</button></div>
+  <div class="lb-b">${fig('photoBefore','術前')}${fig('photoAfter','術後')}</div></div>`);
+}
+
+// ══════════════════════════════════════════
+//  新增 / 編輯
+// ══════════════════════════════════════════
+function openCase(id){
+  const c=id?cases.find(x=>x.id===id):null;
+  if(id&&!c)return;
+  const ro=!canEdit();
+  const d=c||{branch:S.view==='branch'?S.branch:BRANCHES[0],status:'進行中',discount:0,card:false};
+  const P={photoBefore:{pid:d.photoBefore||'',blob:null,url:null,removed:false},photoAfter:{pid:d.photoAfter||'',blob:null,url:null,removed:false}};
+  const dis=ro?'disabled':'';
+  const opt=(arr,v,blank)=>(blank!=null?`<option value="">${blank}</option>`:'')+arr.map(x=>`<option value="${x}" ${x===v?'selected':''}>${x}</option>`).join('');
+  const consultants=[...new Set(cases.map(x=>(x.consultant||'').trim()).filter(Boolean))].sort();
+  const slot=(k,l)=>`<div class="pslot" data-slot="${k}"><div class="pslot-h">${l}</div><div class="pbox"></div>
+    ${ro?'':`<div class="pbtns"><label class="btn btn-sm">上傳<input type="file" accept="image/jpeg,image/png" hidden></label><button type="button" class="btn btn-sm btn-danger" data-rm>移除</button></div>`}</div>`;
+  const title=ro?'案例內容（唯讀）':c?'編輯案例':'新增案例';
+
+  const ov=openOverlay(`<div class="modal"><div class="modal-h"><span class="modal-t">${title}</span><button class="btn btn-icon" data-close>✕</button></div>
+  <div class="modal-b"><form id="case-form" onsubmit="return false">
+    <div class="sec-lbl">基本資料</div>
+    <div class="fgrid">
+      <div class="fg"><label>分院 <span class="req">*</span></label><select name="branch" ${dis}>${opt(BRANCHES,d.branch)}</select></div>
+      <div class="fg"><label>諮詢師</label><input name="consultant" list="dl-consultant" value="${esc(d.consultant||'')}" ${dis}><datalist id="dl-consultant">${consultants.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div>
+      <div class="fg"><label>銷售日</label><input type="date" name="saleDate" value="${d.saleDate||''}" ${dis}></div>
+      <div class="fg"><label>手術日</label><input type="date" name="surgeryDate" value="${d.surgeryDate||''}" ${dis}></div>
+      <div class="fg"><label>顧客姓名 <span class="req">*</span></label><input name="name" value="${esc(d.name||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
+      <div class="fg"><label>顧客代碼 <span class="req">*</span></label><input name="code" value="${esc(d.code||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
+      <div class="fg"><label>授權等級</label><select name="grade" ${dis}>${opt(GRADES,d.grade||'','未填')}</select></div>
+      <div class="fg"><label>折讓金額（元）</label><input type="number" name="discount" step="1" min="0" value="${d.discount||0}" ${dis}></div>
+      <div class="fg"><label>狀態</label><select name="status" ${dis}>${opt(STATUSES,d.status||'進行中')}</select></div>
+      <div class="fg fg-check"><input type="checkbox" class="cb" name="card" id="f-card" ${d.card?'checked':''} ${dis}><label for="f-card" style="font-size:12px">櫃檯已開卡</label></div>
+      <div class="fg fg-full"><label>備註</label><textarea name="note" ${dis}>${esc(d.note||'')}</textarea></div>
+    </div>
+    <div class="sec-lbl">照片</div>
+    <div class="pgrid">${slot('photoBefore','術前照')}${slot('photoAfter','術後照')}</div>
+    ${ro?'':'<div class="hint">⚠️ 顧客須已簽署肖像／案例授權同意書才可上傳。支援 JPG、PNG，上傳前自動壓縮為最長邊 1600px。</div>'}
+  </form></div>
+  <div class="modal-f">
+    ${c&&!ro?'<button class="btn btn-danger" data-del>🗑 刪除案例</button>':''}<span class="grow"></span>
+    ${ro?'<button class="btn btn-primary" data-close>關閉</button>':'<button class="btn" data-close>取消</button><button class="btn btn-primary" data-save>儲存</button>'}
+  </div></div>`,()=>{Object.values(P).forEach(p=>p.url&&URL.revokeObjectURL(p.url));});
+  const root=ov.el;
+
+  const drawSlot=async k=>{
+    const box=root.querySelector(`[data-slot="${k}"] .pbox`), p=P[k];
+    const url=p.url||(!p.removed&&p.pid?await photoURL(p.pid):null);
+    box.innerHTML=url?`<img src="${url}" alt="">`:'尚無照片';
+    const rm=root.querySelector(`[data-slot="${k}"] [data-rm]`); if(rm)rm.disabled=!url;
+  };
+  Object.keys(P).forEach(drawSlot);
+
+  root.querySelectorAll('[data-slot]').forEach(el=>{
+    const k=el.dataset.slot;
+    el.querySelector('input[type=file]')?.addEventListener('change',async e=>{
+      const f=e.target.files[0]; e.target.value=''; if(!f)return;
+      if(!/^image\/(jpeg|png)$/.test(f.type)){toast('請上傳 JPG 或 PNG');return;}
+      try{
+        const blob=await compressImage(f);
+        if(P[k].url)URL.revokeObjectURL(P[k].url);
+        Object.assign(P[k],{blob,url:URL.createObjectURL(blob),removed:false});
+        drawSlot(k);
+      }catch(err){toast('照片讀取失敗：'+err.message);}
+    });
+    el.querySelector('[data-rm]')?.addEventListener('click',()=>{
+      if(P[k].url)URL.revokeObjectURL(P[k].url);
+      Object.assign(P[k],{blob:null,url:null,removed:true}); drawSlot(k);
+    });
+  });
+
+  root.querySelector('[data-del]')?.addEventListener('click',async()=>{
+    if(!confirm(`確定刪除「${c.name||c.code}」這筆案例？\n\n術前、術後照片會一起刪除，且無法復原。`))return;
+    await DB.delCase(c.id); await DB.delPhoto(c.photoBefore); await DB.delPhoto(c.photoAfter);
+    cases=cases.filter(x=>x.id!==c.id);
+    ov.close(); render(); toast('已刪除案例');
+  });
+
+  root.querySelector('[data-save]')?.addEventListener('click',async()=>{
+    const f=new FormData(root.querySelector('#case-form'));
+    const v=k=>String(f.get(k)||'').trim();
+    const rec={branch:v('branch'),consultant:v('consultant'),saleDate:v('saleDate'),surgeryDate:v('surgeryDate'),
+      name:v('name'),code:v('code'),grade:v('grade'),discount:Math.max(0,Math.round(+v('discount')||0)),
+      status:v('status')||'進行中',card:!!f.get('card'),note:v('note')};
+    if(!rec.name&&!rec.code){toast('顧客姓名與顧客代碼至少填一個');return;}
+    const k=caseKey(rec), dup=cases.find(x=>x.id!==(c&&c.id)&&caseKey(x)===k);
+    if(dup&&!confirm('已經有一筆「分院＋顧客＋銷售日」相同的案例，仍要儲存嗎？'))return;
+    const obj=c?Object.assign(c,rec):{id:uid(),createdAt:Date.now(),photoBefore:'',photoAfter:'',...rec};
+    for(const key of ['photoBefore','photoAfter']){
+      const p=P[key];
+      if(p.blob){const nid=uid();await DB.putPhoto(nid,p.blob);if(p.pid)await DB.delPhoto(p.pid);obj[key]=nid;}
+      else if(p.removed&&p.pid){await DB.delPhoto(p.pid);obj[key]='';}
+    }
+    obj.updatedAt=Date.now();
+    await persist([obj]);
+    if(!c)cases.push(obj);
+    ov.close();
+    if(S.view==='branch'&&obj.branch!==S.branch){S.branch=obj.branch;}
+    render(); toast('✓ 案例已儲存');
+  });
+}
+
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const u=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{
+      const s=Math.min(1,PHOTO_MAX/Math.max(img.naturalWidth,img.naturalHeight));
+      const w=Math.round(img.naturalWidth*s), h=Math.round(img.naturalHeight*s);
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(u);
+      cv.toBlob(b=>b?res(b):rej(new Error('壓縮失敗')),'image/jpeg',PHOTO_Q);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('無法讀取圖片'));};
+    img.src=u;
+  });
+}
+
+// ══════════════════════════════════════════
+//  匯入報表
+// ══════════════════════════════════════════
+const FIELD_KEYS=[
+  ['saleDate',['銷售日','銷售日期','消費日','交易日','結帳日']],
+  ['surgeryDate',['手術日','施作日','療程日','術日']],
+  ['code',['顧客代碼','客戶代碼','客編','會員編號','病歷號','顧客編號','客戶編號']],
+  ['name',['顧客姓名','客戶姓名','姓名','顧客名稱','客戶名稱']],
+  ['grade',['授權','等級','分級']],
+  ['discount',['折讓']],
+  ['branch',['分院','院區','門市','分店','診所']],
+  ['consultant',['諮詢師','諮詢','銷售業務','業務','顧問']],
+  ['status',['狀態']],
+  ['card',['開卡','櫃檯']],
+  ['note',['備註','說明']],
+];
+const caseKey=c=>`${c.branch}|${(c.code||c.name||'').trim()}|${c.saleDate||''}`;
+
+function mapHeaders(hdr){
+  const used=new Set(), map={};
+  for(const [f,keys] of FIELD_KEYS){
+    for(const k of keys){
+      const i=hdr.findIndex((h,j)=>!used.has(j)&&h.includes(k)&&!(f==='name'&&/諮詢|業務|顧問/.test(h)));
+      if(i>=0){map[f]=i;used.add(i);break;}
+    }
+  }
+  if(map.saleDate==null){const i=hdr.findIndex((h,j)=>!used.has(j)&&h.includes('日期'));if(i>=0){map.saleDate=i;used.add(i);}}
+  return map;
+}
+
+function toDate(v){
+  if(v==null||v==='')return '';
+  const mk=(y,m,d)=>{y=+y;m=+m;d=+d;if(y<1911)y+=1911;if(m<1||m>12||d<1||d>31||y<1950||y>2200)return '';return `${y}-${pad(m)}-${pad(d)}`;};
+  if(v instanceof Date&&!isNaN(v))return mk(v.getFullYear(),v.getMonth()+1,v.getDate());
+  if(typeof v==='number'){
+    if(v>19000000&&v<30000000){const s=String(Math.round(v));return mk(s.slice(0,4),s.slice(4,6),s.slice(6,8));}
+    if(v>=1000000&&v<2000000){const s=String(Math.round(v));return mk(s.slice(0,3),s.slice(3,5),s.slice(5,7));}
+    if(v>0&&v<100000){const d=XLSX.SSF.parse_date_code(v);return d?mk(d.y,d.m,d.d):'';}
+    return '';
+  }
+  const s=String(v).trim();
+  if(/^\d{8}$/.test(s))return mk(s.slice(0,4),s.slice(4,6),s.slice(6,8));
+  if(/^\d{7}$/.test(s))return mk(s.slice(0,3),s.slice(3,5),s.slice(5,7));
+  const m=s.match(/(\d{2,4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/);
+  return m?mk(m[1],m[2],m[3]):'';
+}
+const toBranch=s=>BRANCHES.find(b=>String(s||'').includes(b))||'';
+const toGrade=s=>{const m=String(s||'').trim().match(/^([A-Za-z])/);const g=m?m[1].toUpperCase():'';return GRADES.includes(g)?g:'';};
+const toInt=s=>{const t=String(s??'').replace(/[,\s$＄元NT]/gi,'');if(t==='')return null;const n=parseFloat(t);return isNaN(n)?null:Math.round(n);};
+const toBool=s=>{if(s===true)return true;if(s===false)return false;const t=String(s??'').trim().toUpperCase();
+  return ['TRUE','✓','✔','V','Y','YES','是','已開卡','完成','已完成','O','Ｏ','○','1','有'].includes(t);};
+const toStatus=s=>{const t=String(s||'').trim();if(!t)return '';if(STATUSES.includes(t))return t;
+  if(t.includes('取消'))return '取消';if(t.includes('完成'))return '已完成';if(t.includes('術後'))return '待術後照';if(t.includes('素材'))return '素材整理中';if(t.includes('進行'))return '進行中';return t;};
+
+async function readWorkbook(file){
+  const buf=await file.arrayBuffer();
+  if(/\.csv$/i.test(file.name)){
+    let text=new TextDecoder('utf-8').decode(buf);
+    if(text.includes('�')){try{text=new TextDecoder('big5').decode(buf);}catch(e){}}
+    return XLSX.read(text.replace(/^﻿/,''),{type:'string',raw:true});
+  }
+  return XLSX.read(new Uint8Array(buf),{type:'array'});
+}
+
+async function importFiles(files){
+  if(!files.length)return;
+  const fallback=S.branch;
+  const index=new Map(cases.map(c=>[caseKey(c),c]));
+  const created=new Set(), touched=new Map();
+  let added=0,updated=0,skipped=0,sheetsOk=0;
+  const skippedSheets=[], perBranch={}, perYear={};
+  try{
+    for(const file of files){
+      const wb=await readWorkbook(file);
+      for(const sn of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
+        let h=-1,map=null;
+        for(let i=0;i<Math.min(15,rows.length);i++){
+          const m=mapHeaders(rows[i].map(x=>String(x).replace(/\s/g,'')));
+          if(m.name!=null||m.code!=null){h=i;map=m;break;}
+        }
+        if(h<0){skippedSheets.push(`${file.name}／${sn}`);continue;}
+        sheetsOk++;
+        const sheetBranch=toBranch(sn);
+        for(let i=h+1;i<rows.length;i++){
+          const r=rows[i];
+          if(!r.some(x=>String(x).trim()!==''))continue;
+          const g=f=>map[f]!=null?r[map[f]]:'';
+          const name=String(g('name')).trim(), code=String(g('code')).trim();
+          if(!name&&!code){skipped++;continue;}
+          const rec={name,code,branch:toBranch(g('branch'))||sheetBranch||fallback,saleDate:toDate(g('saleDate')),
+            surgeryDate:toDate(g('surgeryDate')),grade:toGrade(g('grade')),consultant:String(g('consultant')).trim(),
+            status:toStatus(g('status')),note:String(g('note')).trim()};
+          const disc=toInt(g('discount')); if(disc!=null)rec.discount=disc;
+          const cardRaw=g('card'); if(String(cardRaw).trim()!=='')rec.card=toBool(cardRaw);
+          const k=caseKey(rec);
+          let c=index.get(k);
+          if(c){
+            for(const [f,val] of Object.entries(rec))if(val!==''&&val!=null)c[f]=val;
+            c.updatedAt=Date.now();
+            if(!created.has(c.id)&&!touched.has(c.id))updated++;
+          } else {
+            c={id:uid(),createdAt:Date.now(),photoBefore:'',photoAfter:'',discount:0,card:false,note:'',...rec,status:rec.status||'進行中'};
+            index.set(k,c); cases.push(c); created.add(c.id); added++;
+          }
+          touched.set(c.id,c);
+          perBranch[c.branch]=(perBranch[c.branch]||0)+1;
+          const y=yearOf(c); if(y){const yk=c.branch+'|'+y;perYear[yk]=(perYear[yk]||0)+1;}
+        }
+      }
+    }
+    if(touched.size)await persist([...touched.values()]);
+  }catch(err){
+    cases=await DB.allCases();   // 回復到已儲存狀態
+    render(); notice('匯入失敗',`<p style="font-size:12px">${esc(err.message)}</p>`); return;
+  }
+  const top=Object.entries(perBranch).sort((a,b)=>b[1]-a[1])[0];
+  if(top){
+    S.view='branch'; S.branch=top[0]; S.month=0;
+    const ty=Object.entries(perYear).filter(([k])=>k.startsWith(top[0]+'|')).sort((a,b)=>b[1]-a[1])[0];
+    if(ty)S.year=+ty[0].split('|')[1];
+  }
+  render();
+  notice('📥 匯入完成',`<div class="notice-list">新增 <b>${added}</b> 筆　更新 <b>${updated}</b> 筆　略過 <b>${skipped}</b> 列</div>
+    <div class="notice-sub">讀取 ${sheetsOk} 個工作表${top?`，已切換到匯入最多筆的分院「${top[0]}」`:''}。
+    ${skipped?'<br>略過的列：沒有顧客姓名也沒有顧客代碼。':''}
+    ${skippedSheets.length?`<br>找不到「顧客姓名／顧客代碼」標題而略過的工作表：${skippedSheets.map(esc).join('、')}`:''}</div>`);
+}
+
+// ══════════════════════════════════════════
+//  匯出 XLSX / 截圖
+// ══════════════════════════════════════════
+function doExport(){
+  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','櫃檯開卡','術前照','術後照','備註'];
+  const toRow=c=>[c.branch,c.saleDate||'',c.surgeryDate||'',c.name||'',c.code||'',c.grade||'',c.discount||0,c.consultant||'',
+    c.status||'',c.card?'是':'否',c.photoBefore?'有':'',c.photoAfter?'有':'',c.note||''];
+  const sheet=list=>{const ws=XLSX.utils.aoa_to_sheet([hdr,...list.map(toRow)]);
+    ws['!cols']=[6,11,11,10,12,8,10,10,10,8,7,7,30].map(w=>({wch:w}));return ws;};
+  const all=sortCases([...cases]).sort((a,b)=>BRANCHES.indexOf(a.branch)-BRANCHES.indexOf(b.branch));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheet(all),'全部');
+  BRANCHES.forEach(br=>XLSX.utils.book_append_sheet(wb,sheet(all.filter(c=>c.branch===br)),br));
+  XLSX.writeFile(wb,`口碑案例_${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
+  toast(`↓ 已匯出 ${cases.length} 筆`);
+}
+
+async function doShot(){
+  if(typeof html2canvas==='undefined'){toast('截圖功能尚未載入，請稍候再試');return;}
+  let name, target;
+  if(S.view==='branch'){name=`口碑案例_${S.branch}_${S.year}_${S.month?S.month+'月':'全部'}`;target=$('#app');}
+  else if(S.view==='stats'){name=`口碑案例_每月統計_${S.year}`;target=$('#shot-area');}
+  else{name=`口碑案例_戰情榜_${boardLabel().replace(/\s/g,'')}`;target=$('#shot-area');}
+  shotEl(target,name);
+}
+async function shotEl(target,name){
+  if(typeof html2canvas==='undefined'){toast('截圖功能尚未載入，請稍候再試');return;}
+  toast('擷取中…');
+  try{
+    const cv=await html2canvas(target,{backgroundColor:'#F4F2ED',scale:2,useCORS:true,
+      ignoreElements:el=>el.classList&&el.classList.contains('no-shot')});
+    cv.toBlob(b=>{
+      const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name.replace(/[\\/:*?"<>|]/g,'')+'.jpg';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+      toast('已下載 '+a.download);
+    },'image/jpeg',0.92);
+  }catch(e){toast('截圖失敗，請重試');}
+}
+
+let tt;
+function toast(msg){const el=$('#toast');el.textContent=msg;el.style.display='block';clearTimeout(tt);tt=setTimeout(()=>el.style.display='none',2800);}
+
+// ══════════════════════════════════════════
+//  EVENTS
+// ══════════════════════════════════════════
+$('#branch-bar').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  if(b.dataset.branch){S.view='branch';S.branch=b.dataset.branch;prefs(true);}
+  else S.view=b.dataset.view;
+  render();
+});
+$('#month-bar').addEventListener('click',e=>{const b=e.target.closest('[data-month]');if(b){S.month=+b.dataset.month;render();}});
+$('#month-bar').addEventListener('change',e=>{if(e.target.id==='year-sel'){S.year=+e.target.value;render();}});
+document.querySelectorAll('.vtb').forEach(b=>b.addEventListener('click',()=>{S.layout=b.dataset.layout;prefs(true);render();}));
+$('#fl-grade').innerHTML='<option value="">所有授權等級</option>'+GRADES.map(g=>`<option value="${g}">${g} 級</option>`).join('')+'<option value="-">未填</option>';
+$('#fl-status').innerHTML='<option value="">所有狀態</option>'+STATUSES.map(s=>`<option>${s}</option>`).join('');
+$('#fl-grade').addEventListener('change',e=>{S.grade=e.target.value;render();});
+$('#fl-status').addEventListener('change',e=>{S.status=e.target.value;render();});
+$('#fl-search').addEventListener('input',e=>{S.q=e.target.value;renderCases();hydrate($('#content'));});
+$('#board-period').addEventListener('change',e=>{S.board=e.target.value;render();});
+$('#role-sel').addEventListener('change',e=>{S.role=e.target.value;prefs(true);render();});
+$('#btn-add').addEventListener('click',()=>canEdit()&&openCase(null));
+$('#btn-import').addEventListener('click',()=>canEdit()&&$('#import-file').click());
+$('#import-file').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';importFiles(fs);});
+$('#btn-export').addEventListener('click',doExport);
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-shot]'))doShot();
+  const b=e.target.closest('[data-shot-el]');
+  if(b)shotEl(b.closest('.kpi-panel'),'口碑案例_'+b.dataset.shotEl);
+});
+
+$('#content').addEventListener('click',async e=>{
+  const cb=e.target.closest('[data-card]');
+  if(cb){
+    e.stopPropagation();
+    if(!canEdit()){e.preventDefault();return;}
+    const c=cases.find(x=>x.id===cb.dataset.card); if(!c)return;
+    c.card=cb.checked; c.updatedAt=Date.now();
+    try{await persist([c]);}catch(err){cb.checked=!cb.checked;c.card=cb.checked;}
+    return;
+  }
+  if(e.target.closest('label'))return;
+  const lb=e.target.closest('[data-lightbox]');
+  if(lb){openLightbox(lb.dataset.lightbox);return;}
+  const row=e.target.closest('[data-open]');
+  if(row)openCase(row.dataset.open);
+});
+
+// ══════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════
+(async function init(){
+  prefs(false);
+  const role=new URLSearchParams(location.search).get('role');
+  if(role==='viewer'){S.role='viewer';$('#role-sel').hidden=true;}
+  try{await DB.open();cases=await DB.allCases();}
+  catch(e){setSaveLabel('● 無法使用本機儲存','#C0394A');notice('無法開啟本機儲存',`<p style="font-size:12px">這個瀏覽器不允許儲存資料（可能是無痕模式）。資料不會被保存。<br>${esc(e.message)}</p>`);}
+  render();
+})();
+</script>
+</body>
+</html>
