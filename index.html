@@ -312,7 +312,7 @@ const fixGrade=c=>{if(c&&OLD_GRADE[c.grade])c.grade=OLD_GRADE[c.grade];return c;
 const STATUSES=['進行中','待術後照','素材整理中','已完成','取消'];
 const ITER=600000;
 // 各分院負責組員（每月統計 KPI 表用）
-const FIXED_STAFF={仁愛:'蔡忻宸',桃園:'陳涵',向上:'王喬儀',巨蛋:'林采蓁',北屯:'劉芳瑜'};
+const FIXED_STAFF={仁愛:'蔡忻宸',桃園:'陳伃涵',向上:'王喬儀',巨蛋:'林采蓁',北屯:'劉芳瑜'};
 const staffOf=(br,y,m)=>br==='竹北'?((y>2026||(y===2026&&m>=6))?'高麗雯':'謝昀溱'):(FIXED_STAFF[br]||'');
 // KPI：2026/6 起「總計≥3 且 全臉公開≥1」；之前「總計≥3 且 全臉或匿名公開≥1」
 const isNewKPI=(y,m)=>y>2026||(y===2026&&m>=6);
