@@ -445,6 +445,7 @@ function renderHeader(){
     h.push('<button class="btn" id="btn-import">📥 匯入報表</button>');
     h.push('<button class="btn btn-primary" id="btn-add">＋ 新增案例</button>');
     h.push('<button class="btn btn-pub" id="btn-publish">🌐 發佈到網站</button>');
+    h.push('<button class="btn btn-danger" id="btn-clear" title="刪除這台電腦裡的全部案例">🗑 清空全部資料</button>');
   }
   h.push('<button class="btn" id="btn-export">↓ 匯出 XLSX</button>');
   if(!ADMIN)h.push('<button class="btn" id="btn-logout">登出</button>');
@@ -649,9 +650,10 @@ function renderBoard(){
   const rank=(a,b)=>b.n-a.n||b.sa-a.sa;
   const brRows=BRANCHES.map(br=>{const l=pc.filter(c=>c.branch===br);return {name:br,n:l.length,sa:l.filter(isSA).length};}).sort(rank);
   const cm=new Map();
-  pc.forEach(c=>{const nm=(c.consultant||'').trim(); if(!nm)return;
+  // 一筆案例有多位諮詢師（以「、」分隔）時，每人各計一筆
+  pc.forEach(c=>String(c.consultant||'').split(/[、,，\/]/).map(x=>x.trim()).filter(Boolean).forEach(nm=>{
     const k=c.branch+'|'+nm; if(!cm.has(k))cm.set(k,{name:nm,branch:c.branch,n:0,sa:0});
-    const r=cm.get(k); r.n++; if(isSA(c))r.sa++;});
+    const r=cm.get(k); r.n++; if(isSA(c))r.sa++;}));
   const csRows=[...cm.values()].sort(rank).slice(0,10);
   const medals=['🥇','🥈','🥉'];
   const row=(r,i,tag)=>`<div class="board-row ${i<3?'top'+(i+1):''}">
@@ -756,6 +758,15 @@ function openCase(id){
     if(S.view==='branch')S.branch=obj.branch;
     render(); toast('✓ 案例已儲存');
   });
+}
+
+async function clearAll(){
+  if(!cases.length){toast('目前沒有資料');return;}
+  if(!confirm(`確定要刪除這台電腦裡的全部 ${cases.length} 筆案例嗎？\n\n刪除後無法復原。帳號密碼設定會保留。\n（網站上的資料要等下次「發佈到網站」才會更新）`))return;
+  if(prompt('請輸入「清空」兩個字確認：')!=='清空'){toast('已取消');return;}
+  for(const c of cases)await DB.delCase(c.id);
+  cases=[]; await DB.setMeta('dirty',true);
+  render(); updateAdminLabel(); toast('已清空全部資料，請重新匯入報表');
 }
 
 // ══════════════════════════════════════════
@@ -1037,6 +1048,7 @@ $('#hright').addEventListener('click',e=>{
   else if(b.id==='btn-export')doExport();
   else if(b.id==='btn-pw')openPasswords();
   else if(b.id==='btn-publish')publish();
+  else if(b.id==='btn-clear')clearAll();
   else if(b.id==='btn-logout'){try{sessionStorage.removeItem('koubei_session');}catch(err){}location.reload();}
 });
 $('#import-file').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';importFiles(fs);});
