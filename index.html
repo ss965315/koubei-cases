@@ -102,12 +102,11 @@ code{font-family:var(--mono);font-size:11px;color:var(--text2)}
 .cb:disabled{cursor:default;opacity:1}
 
 /* badges */
-.g{display:inline-block;min-width:26px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid transparent}
-.g-S{background:#F3E8FB;color:#6B2A9A;border-color:#DCC3EE}
-.g-A{background:#EEF3FB;color:#1A3A6C;border-color:#B8CEDE}
-.g-B{background:#E4EDE9;color:#1B5C3A;border-color:#B8D4C4}
-.g-C{background:#FEF8EC;color:#7A5800;border-color:#DFC07A}
-.g-D{background:#F4F2ED;color:#6B6560;border-color:#C8C2B5}
+.g{display:inline-block;text-align:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;border:1px solid transparent;white-space:nowrap}
+.g-0{background:#E4EDE9;color:#1B5C3A;border-color:#B8D4C4}
+.g-1{background:#EEF3FB;color:#1A3A6C;border-color:#B8CEDE}
+.g-2{background:#FEF8EC;color:#7A5800;border-color:#DFC07A}
+.g-3{background:#F4F2ED;color:#6B6560;border-color:#C8C2B5}
 .g-none{font-family:'Noto Sans TC',sans-serif;font-weight:400;color:var(--text3);background:transparent;border-color:var(--border)}
 .st{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
 .st-ok{background:var(--ok-bg);color:var(--ok)}
@@ -305,18 +304,22 @@ const ACCOUNTS=[
   {id:'總部',branch:null},
 ];
 const HQ_MIN_PW=8, PW_MIN=4;
-const GRADES=['S','A','B','C','D'];
+// 授權等級與對應折讓金額
+const GRADES=['全臉公開','匿名公開','院內公開','無折扣'];
+const GRADE_AMT={全臉公開:15000,匿名公開:10000,院內公開:5000,無折扣:0};
+const OLD_GRADE={S:'全臉公開',A:'匿名公開',B:'院內公開',C:'院內公開',D:'無折扣'};   // 舊版 S～D 資料轉換
+const fixGrade=c=>{if(c&&OLD_GRADE[c.grade])c.grade=OLD_GRADE[c.grade];return c;};
 const STATUSES=['進行中','待術後照','素材整理中','已完成','取消'];
 const ITER=600000;
 // 各分院負責組員（每月統計 KPI 表用）
 const FIXED_STAFF={仁愛:'蔡忻宸',桃園:'陳涵',向上:'王喬儀',巨蛋:'林采蓁',北屯:'劉芳瑜'};
 const staffOf=(br,y,m)=>br==='竹北'?((y>2026||(y===2026&&m>=6))?'高麗雯':'謝昀溱'):(FIXED_STAFF[br]||'');
-// KPI：2026/6 起「總計≥3 且 S 級≥1」；之前「總計≥3 且 S 或 A 級≥1」（原版：全臉公開＝S、匿名公開＝A）
+// KPI：2026/6 起「總計≥3 且 全臉公開≥1」；之前「總計≥3 且 全臉或匿名公開≥1」
 const isNewKPI=(y,m)=>y>2026||(y===2026&&m>=6);
 function kpiOf(list,y,m){
-  const s=list.filter(c=>c.grade==='S').length, a=list.filter(c=>c.grade==='A').length, n=list.length;
+  const s=list.filter(c=>c.grade==='全臉公開').length, a=list.filter(c=>c.grade==='匿名公開').length, n=list.length;
   const neu=isNewKPI(y,m), ok=neu?(n>=3&&s>=1):(n>=3&&s+a>=1);
-  return {s,a,n,ok,why:ok?'':n<3?'案例不足':neu?'缺 S 級':'缺 S 或 A 級'};
+  return {s,a,n,ok,why:ok?'':n<3?'案例不足':neu?'缺全臉公開':'缺全臉或匿名公開'};
 }
 const NOW=new Date(), CUR_Y=NOW.getFullYear(), CUR_M=NOW.getMonth()+1;
 const pad=n=>String(n).padStart(2,'0');
@@ -331,7 +334,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const fmt=n=>(Number(n)||0).toLocaleString('zh-TW');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const canEdit=()=>ADMIN;
-const isSA=c=>c.grade==='S'||c.grade==='A';
+const isSA=c=>c.grade==='全臉公開'||c.grade==='匿名公開';   // 高授權
 const yearOf=c=>c.saleDate?+c.saleDate.slice(0,4):null;
 const monthOf=c=>c.saleDate?+c.saleDate.slice(5,7):null;
 const myBranches=()=>SESSION&&SESSION.branch?[SESSION.branch]:BRANCHES;
@@ -430,7 +433,7 @@ function yearsList(){
   const ys=new Set([CUR_Y]); [...statRows(),...cases].forEach(c=>{const y=yearOf(c);if(y)ys.add(y);});
   return [...ys].sort((a,b)=>b-a);
 }
-const gradeBadge=g=>g?`<span class="g g-${g}">${g}</span>`:`<span class="g g-none">未填</span>`;
+const gradeBadge=g=>g?`<span class="g g-${GRADES.indexOf(g)}">${esc(g)}</span>`:`<span class="g g-none">未填</span>`;
 const statusCls=s=>s==='已完成'?'st-ok':s==='取消'?'st-cancel':'st-warn';
 const statusBadge=s=>s?`<span class="st ${statusCls(s)}">${esc(s)}</span>`:'<span style="color:var(--text3)">—</span>';
 const sortCases=list=>list.sort((a,b)=>(b.saleDate||'').localeCompare(a.saleDate||'')||(b.createdAt||0)-(a.createdAt||0));
@@ -563,7 +566,7 @@ function renderStats(){
     <div class="stat-grid">
       ${tile('年度案例數',n,'依銷售日歸年')}
       ${tile('有案例的分院',`${brN}<span style="font-size:13px;color:var(--text3)"> / ${BRANCHES.length}</span>`,'')}
-      ${tile('S＋A 級',sa,`高授權占比 ${pct(sa,n)}`)}
+      ${tile('全臉＋匿名公開',sa,`高授權占比 ${pct(sa,n)}`)}
       ${tile('折讓金額合計','$'+fmt(disc),'')}
       ${tile('平均每案折讓','$'+fmt(n?Math.round(disc/n):0),'合計 ÷ 案例數')}
       ${tile('已完成',done,`完成率 ${pct(done,n)}`)}
@@ -598,7 +601,7 @@ function kpiSection(yc){
   return `<div class="sec-head" style="margin-top:8px"><span class="sec-title">🎯 各月 KPI 達標（給泰迪協理）</span></div>`+months.map(m=>{
     const y=S.year, rows=BRANCHES.map(br=>({br,staff:staffOf(br,y,m),...kpiOf(yc.filter(c=>c.branch===br&&monthOf(c)===m),y,m)}));
     const okN=rows.filter(r=>r.ok).length, sum=k=>rows.reduce((t,r)=>t+r[k],0);
-    const rule=isNewKPI(y,m)?'總計≥3 且 S 級≥1':'總計≥3 且 S 或 A 級≥1';
+    const rule=isNewKPI(y,m)?'總計≥3 且 全臉公開≥1':'總計≥3 且 全臉或匿名公開≥1';
     return `<div class="panel kpi-panel">
       <div class="panel-h" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--pink-bg);color:var(--pink);border-bottom-color:var(--pink-border)">
         <span>📅 ${y} 年 ${m} 月 — 各院統計</span>
@@ -608,10 +611,10 @@ function kpiSection(yc){
         </span>
       </div>
       <div class="ovx"><table class="mtable">
-        <thead><tr><th>分院</th><th style="text-align:left">組員姓名</th><th>S</th><th>A</th><th>其他</th><th>總計</th><th>KPI 達標</th></tr></thead>
+        <thead><tr><th>分院</th><th style="text-align:left">組員姓名</th><th>全臉公開</th><th>匿名公開</th><th>其他</th><th>總計</th><th>KPI 達標</th></tr></thead>
         <tbody>${rows.map(r=>`<tr style="${r.ok?'':'background:#FFF8F8'}">
           <td>${r.br}</td><td style="text-align:left;font-family:'Noto Sans TC',sans-serif">${esc(r.staff||'—')}</td>
-          <td>${r.s?`<b style="color:#6B2A9A">${r.s}</b>`:''}</td><td>${r.a?`<b style="color:#1A3A6C">${r.a}</b>`:''}</td>
+          <td>${r.s?`<b style="color:#1B5C3A">${r.s}</b>`:''}</td><td>${r.a?`<b style="color:#1A3A6C">${r.a}</b>`:''}</td>
           <td>${(r.n-r.s-r.a)||''}</td><td style="font-weight:700">${r.n||''}</td>
           <td style="font-family:'Noto Sans TC',sans-serif;font-size:11px">${r.ok?'<b style="color:var(--ok)">✅ 達標</b>':`<span style="color:var(--pink)">⚠️ ${r.why}</span>`}</td>
         </tr>`).join('')}
@@ -654,14 +657,14 @@ function renderBoard(){
   const row=(r,i,tag)=>`<div class="board-row ${i<3?'top'+(i+1):''}">
     <div class="board-rank">${i+1}</div>
     <div class="board-name-wrap"><div class="board-name">${i<3?medals[i]+' ':''}${esc(r.name)}${tag?`<span class="board-branch-tag">${esc(r.branch)}</span>`:''}</div>
-    <div class="board-sub">S＋A 級 ${r.sa} 件</div></div>
+    <div class="board-sub">全臉＋匿名公開 ${r.sa} 件</div></div>
     <div class="board-count-wrap"><div class="board-count">${r.n}</div><div class="board-count-lbl">案例數</div></div></div>`;
   const empty=t=>`<div class="empty" style="padding:30px 10px"><span class="empty-ico">🏆</span><p>${t}</p></div>`;
   $('#content').innerHTML=`<div class="board-wrap" id="shot-area">
     <div class="board-head">
       <div class="board-head-eyebrow">MEGAIA · HONOR BOARD</div>
       <div class="board-head-title">🏆 口碑案例戰情榜｜${esc(boardLabel())}</div>
-      <div class="board-head-sub">期間共 ${pc.length} 件案例，其中 S＋A 高授權 ${pc.filter(isSA).length} 件。排名依案例數，同數比 S＋A 級件數。</div>
+      <div class="board-head-sub">期間共 ${pc.length} 件案例，其中全臉＋匿名公開 ${pc.filter(isSA).length} 件。排名依案例數，同數比全臉＋匿名公開件數。</div>
     </div>
     <div class="board-body"><div class="board-grid">
       <div><div class="board-col-title">分院排行 <small>六家全列</small></div>${brRows.map((r,i)=>row(r,i,false)).join('')}</div>
@@ -711,7 +714,7 @@ function openCase(id){
       <div class="fg"><label>手術日</label><input type="date" name="surgeryDate" value="${d.surgeryDate||''}" ${dis}></div>
       <div class="fg"><label>顧客姓名 <span class="req">*</span></label><input name="name" value="${esc(d.name||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
       <div class="fg"><label>顧客代碼 <span class="req">*</span></label><input name="code" value="${esc(d.code||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
-      <div class="fg"><label>授權等級</label><select name="grade" ${dis}>${opt(GRADES,d.grade||'','未填')}</select></div>
+      <div class="fg"><label>授權等級</label><select name="grade" ${dis}>${opt(GRADES,d.grade||'','未填').replace(/>(全臉公開|匿名公開|院內公開|無折扣)</g,(m,g)=>`>${g}（$${fmt(GRADE_AMT[g])}）<`)}</select></div>
       <div class="fg"><label>折讓金額（元）</label><input type="number" name="discount" step="1" min="0" value="${d.discount||0}" ${dis}></div>
       <div class="fg fg-full"><label>狀態</label><select name="status" ${dis}>${opt(STATUSES,d.status||'進行中')}</select></div>
     </div>
@@ -724,6 +727,10 @@ function openCase(id){
     ${ro?'<button class="btn btn-primary" data-close>關閉</button>':'<button class="btn" data-close>取消</button><button class="btn btn-primary" data-save>儲存</button>'}
   </div></div>`);
   const root=ov.el;
+  // 選授權等級時自動帶入折讓金額
+  root.querySelector('[name=grade]').addEventListener('change',e=>{
+    const g=e.target.value; if(g in GRADE_AMT)root.querySelector('[name=discount]').value=GRADE_AMT[g];
+  });
 
   root.querySelector('[data-del]')?.addEventListener('click',async()=>{
     if(!confirm(`確定刪除「${c.name||c.code}」這筆案例？\n\n刪除後無法復原。`))return;
@@ -823,9 +830,9 @@ const FIELD_KEYS=[
   ['surgeryDate',['手術日','施作日','療程日','術日']],
   ['code',['顧客代碼','客戶代碼','客編','會員編號','病歷號','顧客編號','客戶編號']],
   ['name',['顧客姓名','客戶姓名','姓名','顧客名稱','客戶名稱']],
-  ['grade',['授權','等級','分級']],
+  ['grade',['授權','等級','分級','商品名稱','商品','品項']],
   ['discount',['折讓']],
-  ['branch',['分院','院區','門市','分店','診所']],
+  ['branch',['分院','院區','門市','分店','診所','店碼']],
   ['consultant',['諮詢師','諮詢','銷售業務','業務','顧問']],
   ['status',['狀態']],
   ['card',['開卡','櫃檯']],
@@ -865,7 +872,10 @@ function toDate(v){
 }
 const BRANCH_CODES={M001:'仁愛',M002:'桃園',M003:'向上',M005:'巨蛋',M006:'竹北',M007:'北屯'};
 const toBranch=s=>{const t=String(s||'');return BRANCHES.find(b=>t.includes(b))||(Object.entries(BRANCH_CODES).find(([k])=>t.toUpperCase().includes(k))||[])[1]||'';};
-const toGrade=s=>{const m=String(s||'').trim().match(/^([A-Za-z])/);const g=m?m[1].toUpperCase():'';return GRADES.includes(g)?g:'';};
+const toGrade=s=>{const t=String(s||'').trim();
+  if(t.includes('全臉'))return '全臉公開'; if(t.includes('匿名'))return '匿名公開';
+  if(t.includes('院內'))return '院內公開'; if(t.includes('無折扣'))return '無折扣';
+  const m=t.match(/^([A-Za-z])(?![A-Za-z])/); return m&&OLD_GRADE[m[1].toUpperCase()]||'';};
 const toInt=s=>{const t=String(s??'').replace(/[,\s$＄元NT]/gi,'');if(t==='')return null;const n=parseFloat(t);return isNaN(n)?null:Math.round(n);};
 const toBool=s=>{if(s===true)return true;if(s===false)return false;const t=String(s??'').trim().toUpperCase();
   return ['TRUE','✓','✔','V','Y','YES','是','已開卡','完成','已完成','O','Ｏ','○','1','有'].includes(t);};
@@ -906,12 +916,24 @@ async function importFiles(files){
           const r=rows[i];
           if(!r.some(x=>String(x).trim()!==''))continue;
           const g=f=>map[f]!=null?r[map[f]]:'';
-          const name=String(g('name')).trim(), code=String(g('code')).trim();
+          // 銷售報表的「客戶姓名」可能是「代碼 換行 姓名」，姓名前可能有 ★
+          let name=String(g('name')).trim(), code=String(g('code')).trim();
+          if(/合計|單日/.test(name))continue;
+          const np=name.split(/\r?\n|\\n/).map(x=>x.trim()).filter(Boolean);
+          if(np.length>=2){if(!code)code=np[0];name=np[np.length-1];}
+          name=name.replace(/★/g,'').trim();
           if(!name&&!code){skipped++;continue;}
+          // 諮詢師欄可能是多行「姓名-工號」
+          const cons=[...new Set(String(g('consultant')).split(/\r?\n|\\n|、/).map(x=>x.split('-')[0].trim())
+            .filter(x=>x&&!/[A-Za-z]{2,}\d{2,}/.test(x)&&!x.includes('行銷')))].join('、');
+          const gradeRaw=String(g('grade'));
           const rec={name,code,branch:toBranch(g('branch'))||sheetBranch||fallback,saleDate:toDate(g('saleDate')),
-            surgeryDate:toDate(g('surgeryDate')),grade:toGrade(g('grade')),consultant:String(g('consultant')).trim(),
+            surgeryDate:toDate(g('surgeryDate')),grade:toGrade(gradeRaw),consultant:cons,
             status:toStatus(g('status')),note:String(g('note')).trim()};
-          const disc=toInt(g('discount')); if(disc!=null)rec.discount=disc;
+          const disc=toInt(g('discount'));
+          if(disc!=null)rec.discount=disc;
+          else if(gradeRaw.includes('諮詢師無回饋'))rec.discount=0;
+          else if(rec.grade)rec.discount=GRADE_AMT[rec.grade];
           for(const f of ['card','cbPre','cbPost']){const raw=g(f); if(String(raw).trim()!=='')rec[f]=toBool(raw);}
           const k=caseKey(rec);
           let c=index.get(k);
@@ -1002,7 +1024,7 @@ $('#branch-bar').addEventListener('click',e=>{
 $('#month-bar').addEventListener('click',e=>{const b=e.target.closest('[data-month]');if(b){S.month=+b.dataset.month;render();}});
 $('#month-bar').addEventListener('change',e=>{if(e.target.id==='year-sel'){S.year=+e.target.value;render();}});
 document.querySelectorAll('.vtb').forEach(b=>b.addEventListener('click',()=>{S.layout=b.dataset.layout;prefs(true);render();}));
-$('#fl-grade').innerHTML='<option value="">所有授權等級</option>'+GRADES.map(g=>`<option value="${g}">${g} 級</option>`).join('')+'<option value="-">未填</option>';
+$('#fl-grade').innerHTML='<option value="">所有授權等級</option>'+GRADES.map(g=>`<option value="${g}">${g}</option>`).join('')+'<option value="-">未填</option>';
 $('#fl-status').innerHTML='<option value="">所有狀態</option>'+STATUSES.map(s=>`<option>${s}</option>`).join('');
 $('#fl-grade').addEventListener('change',e=>{S.grade=e.target.value;render();});
 $('#fl-status').addEventListener('change',e=>{S.status=e.target.value;render();});
@@ -1051,7 +1073,7 @@ async function loadEnc(){
 }
 function startSession(d){
   SESSION={id:d.id,label:d.label,branch:d.branch,updatedAt:d.updatedAt};
-  cases=d.cases||[]; allRows=d.all||null;
+  cases=(d.cases||[]).map(fixGrade); allRows=d.all?d.all.map(fixGrade):null;
   if(d.branch)S.branch=d.branch;
   $('#login').hidden=true; $('#app').hidden=false;
   renderHeader(); render();
@@ -1060,7 +1082,11 @@ function startSession(d){
 (async function init(){
   prefs(false);
   if(ADMIN){
-    try{await DB.open();cases=await DB.allCases();}
+    try{
+      await DB.open();cases=await DB.allCases();
+      const old=cases.filter(c=>OLD_GRADE[c.grade]);
+      if(old.length){old.forEach(fixGrade);await persist(old);}
+    }
     catch(e){notice('無法開啟本機儲存',`<p class="notice-sub">這個瀏覽器不允許儲存資料（可能是無痕模式），資料不會被保存。</p>`);}
     $('#app').hidden=false; renderHeader(); updateAdminLabel(); render();
     return;
