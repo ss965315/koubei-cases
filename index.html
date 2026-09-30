@@ -324,7 +324,7 @@ function kpiOf(list,y,m){
 const NOW=new Date(), CUR_Y=NOW.getFullYear(), CUR_M=NOW.getMonth()+1;
 const pad=n=>String(n).padStart(2,'0');
 
-const S={view:'branch',branch:BRANCHES[0],year:CUR_Y,month:0,layout:'list',grade:'',status:'',q:'',board:`M:${CUR_Y}-${pad(CUR_M)}`};
+const S={view:'branch',branch:BRANCHES[0],year:CUR_Y,month:0,layout:'list',grade:'',status:'',q:'',board:`M:${CUR_Y}-${pad(CUR_M)}`,rFrom:1,rTo:12};
 let cases=[];          // 自己看得到的完整案例
 let allRows=null;      // 分院帳號：全分院去識別資料（統計、戰情榜用）
 let SESSION=null;      // 登入資訊 {id,label,branch,updatedAt}
@@ -470,7 +470,7 @@ function render(){
       const n=m?inB.filter(c=>monthOf(c)===m).length:0;
       return `<button class="mbtn ${S.month===m?'active':''}" data-month="${m}">${m?m+'月':'全部'}${n?`<small>${n}</small>`:''}</button>`;
     }).join('');
-  } else mb+=`<span style="font-size:11px;color:var(--text3);padding:0 0 12px">依銷售日統計${allRows?'・全分院數字（不含顧客資料）':''}</span>`;
+  } else mb+=rangeBar();
   $('#month-bar').innerHTML=mb;
   $('#month-bar').hidden=S.view==='board';
   $('#case-toolbar').hidden=S.view!=='branch';
@@ -547,8 +547,23 @@ function renderCases(){
 // ══════════════════════════════════════════
 //  RENDER：每月統計
 // ══════════════════════════════════════════
+const QUARTERS=[{l:'第一季',f:1,t:3},{l:'第二季',f:4,t:6},{l:'第三季',f:7,t:9},{l:'第四季',f:10,t:12}];
+function rangeLabel(){
+  if(S.rFrom===1&&S.rTo===12)return '全年';
+  const q=QUARTERS.find(q=>q.f===S.rFrom&&q.t===S.rTo);
+  return (q?q.l+' ':'')+(S.rFrom===S.rTo?`${S.rFrom}月`:`${S.rFrom}～${S.rTo}月`);
+}
+function rangeBar(){
+  const b=(f,t,l)=>`<button class="mbtn ${S.rFrom===f&&S.rTo===t?'active':''}" data-range="${f}-${t}">${l}</button>`;
+  const ms=(id,v)=>`<select class="fsel" id="${id}" style="padding:3px 6px">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===v?'selected':''}>${i+1}月</option>`).join('')}</select>`;
+  return b(1,12,'全年')+QUARTERS.map(q=>b(q.f,q.t,`${q.l}（${q.f}-${q.t}月）`)).join('')+
+    `<span style="display:inline-flex;align-items:center;gap:5px;margin:0 0 6px 10px;font-size:11px;color:var(--text2)">自訂 ${ms('r-from',S.rFrom)} ～ ${ms('r-to',S.rTo)}</span>`;
+}
+
 function renderStats(){
-  const yc=statRows().filter(c=>yearOf(c)===S.year);
+  const yAll=statRows().filter(c=>yearOf(c)===S.year);
+  const MS=Array.from({length:S.rTo-S.rFrom+1},(_,i)=>S.rFrom+i);   // 區間內的月份
+  const yc=yAll.filter(c=>monthOf(c)>=S.rFrom&&monthOf(c)<=S.rTo);
   const n=yc.length, sa=yc.filter(isSA).length;
   const disc=yc.reduce((s,c)=>s+(c.discount||0),0);
   const done=yc.filter(c=>c.status==='已完成').length, carded=yc.filter(c=>c.card).length;
@@ -556,16 +571,25 @@ function renderStats(){
   const pct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
   const tile=(l,v,s='')=>`<div class="scard"><div class="scard-lbl">${l}</div><div class="scard-val">${v}</div><div class="scard-sub">${s}</div></div>`;
 
-  const byM=Array.from({length:12},(_,i)=>yc.filter(c=>monthOf(c)===i+1).length);
+  const byM=MS.map(m=>yc.filter(c=>monthOf(c)===m).length);
   const maxM=Math.max(1,...byM);
-  const heat=BRANCHES.map(br=>Array.from({length:12},(_,i)=>yc.filter(c=>c.branch===br&&monthOf(c)===i+1).length));
+  const heat=BRANCHES.map(br=>MS.map(m=>yc.filter(c=>c.branch===br&&monthOf(c)===m).length));
   const maxH=Math.max(1,...heat.flat());
-  const heatTd=v=>{if(!v)return '<td style="color:var(--border2)">·</td>';const a=.12+.78*v/maxH;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
+  const heatCell=(v,max)=>{if(!v)return '<td style="color:var(--border2)">·</td>';const a=.12+.78*v/max;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
+  const heatTd=v=>heatCell(v,maxH);
+
+  // 各季統計（全年，不受區間影響）
+  const inQ=(c,q)=>monthOf(c)>=q.f&&monthOf(c)<=q.t;
+  const qRows=BRANCHES.map(br=>QUARTERS.map(q=>yAll.filter(c=>c.branch===br&&inQ(c,q))));
+  const maxQ=Math.max(1,...qRows.flat().map(l=>l.length));
+  const qSel=q=>S.rFrom===q.f&&S.rTo===q.t;
+  const qCell=l=>{const v=l.length,s=l.filter(c=>c.grade==='全臉公開').length;if(!v)return '<td style="color:var(--border2)">·</td>';
+    const a=.12+.78*v/maxQ;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}<div style="font-size:9px;opacity:.8">全臉 ${s}</div></td>`;};
 
   $('#content').innerHTML=`<div id="shot-area">
-    <div class="sec-head"><span class="sec-title">📊 ${S.year} 年 每月統計</span><button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button></div>
+    <div class="sec-head"><span class="sec-title">📊 ${S.year} 年 ${rangeLabel()} 統計</span><button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button></div>
     <div class="stat-grid">
-      ${tile('年度案例數',n,'依銷售日歸年')}
+      ${tile('案例數',n,`${rangeLabel()}・依銷售日`)}
       ${tile('有案例的分院',`${brN}<span style="font-size:13px;color:var(--text3)"> / ${BRANCHES.length}</span>`,'')}
       ${tile('全臉＋匿名公開',sa,`高授權占比 ${pct(sa,n)}`)}
       ${tile('折讓金額合計','$'+fmt(disc),'')}
@@ -573,15 +597,20 @@ function renderStats(){
       ${tile('已完成',done,`完成率 ${pct(done,n)}`)}
       ${tile('櫃檯已開卡',carded,`開卡率 ${pct(carded,n)}`)}
     </div>
-    <div class="panel"><div class="panel-h">各月案例數（全分院合計）</div><div class="panel-b">
-      <div class="bars">${byM.map((v,i)=>`<div class="bar-col"><span class="bar-v">${v||''}</span><div class="bar ${v?'':'zero'}" style="height:${v?Math.max(4,v/maxM*150):2}px"></div><span class="bar-l">${i+1}月</span></div>`).join('')}</div>
+    <div class="panel"><div class="panel-h">各季統計（${S.year} 年全年・點季別可切換）</div><div class="ovx"><table class="mtable">
+      <thead><tr><th>分院</th>${QUARTERS.map(q=>`<th><button class="mbtn ${qSel(q)?'active':''}" data-range="${q.f}-${q.t}" style="padding:2px 6px">${q.l}<br><span style="font-weight:400;font-size:10px">${q.f}-${q.t}月</span></button></th>`).join('')}<th>全年</th></tr></thead>
+      <tbody>${BRANCHES.map((br,bi)=>`<tr><td>${br}</td>${qRows[bi].map(qCell).join('')}<td class="tot">${qRows[bi].reduce((s,l)=>s+l.length,0)}</td></tr>`).join('')}
+      <tr class="total"><td>合計</td>${QUARTERS.map((q,qi)=>{const l=qRows.map(r=>r[qi]).flat();return `<td>${l.length}<div style="font-size:9px;font-weight:400">全臉 ${l.filter(c=>c.grade==='全臉公開').length}</div></td>`;}).join('')}<td>${yAll.length}</td></tr></tbody>
+    </table></div></div>
+    <div class="panel"><div class="panel-h">各月案例數（全分院合計・${rangeLabel()}）</div><div class="panel-b">
+      <div class="bars" style="grid-template-columns:repeat(${MS.length},1fr)">${byM.map((v,i)=>`<div class="bar-col"><span class="bar-v">${v||''}</span><div class="bar ${v?'':'zero'}" style="height:${v?Math.max(4,v/maxM*150):2}px"></div><span class="bar-l">${MS[i]}月</span></div>`).join('')}</div>
     </div></div>
-    <div class="panel"><div class="panel-h">分院 × 月份</div><div class="ovx"><table class="mtable">
-      <thead><tr><th>分院</th>${byM.map((_,i)=>`<th>${i+1}月</th>`).join('')}<th>合計</th></tr></thead>
+    <div class="panel"><div class="panel-h">分院 × 月份（${rangeLabel()}）</div><div class="ovx"><table class="mtable">
+      <thead><tr><th>分院</th>${MS.map(m=>`<th>${m}月</th>`).join('')}<th>合計</th></tr></thead>
       <tbody>${BRANCHES.map((br,bi)=>`<tr><td>${br}</td>${heat[bi].map(heatTd).join('')}<td class="tot">${heat[bi].reduce((a,b)=>a+b,0)}</td></tr>`).join('')}
       <tr class="total"><td>合計</td>${byM.map(v=>`<td>${v}</td>`).join('')}<td>${n}</td></tr></tbody>
     </table></div></div>
-    <div class="panel"><div class="panel-h">分院 × 授權等級</div><div class="ovx"><table class="mtable">
+    <div class="panel"><div class="panel-h">分院 × 授權等級（${rangeLabel()}）</div><div class="ovx"><table class="mtable">
       <thead><tr><th>分院</th>${GRADES.map(g=>`<th>${g}</th>`).join('')}<th>未填</th><th>案例數</th><th>折讓金額</th><th>已完成</th><th>開卡率</th></tr></thead>
       <tbody>${[...BRANCHES,null].map(br=>{
         const bc=br?yc.filter(c=>c.branch===br):yc;
@@ -1002,7 +1031,7 @@ function doExport(){
 async function doShot(){
   let name, target;
   if(S.view==='branch'){name=`口碑案例_${S.branch}_${S.year}_${S.month?S.month+'月':'全部'}`;target=$('#app');}
-  else if(S.view==='stats'){name=`口碑案例_每月統計_${S.year}`;target=$('#shot-area');}
+  else if(S.view==='stats'){name=`口碑案例_統計_${S.year}_${rangeLabel().replace(/\s/g,'')}`;target=$('#shot-area');}
   else{name=`口碑案例_戰情榜_${boardLabel().replace(/\s/g,'')}`;target=$('#shot-area');}
   shotEl(target,name);
 }
@@ -1033,7 +1062,18 @@ $('#branch-bar').addEventListener('click',e=>{
   render();
 });
 $('#month-bar').addEventListener('click',e=>{const b=e.target.closest('[data-month]');if(b){S.month=+b.dataset.month;render();}});
-$('#month-bar').addEventListener('change',e=>{if(e.target.id==='year-sel'){S.year=+e.target.value;render();}});
+$('#month-bar').addEventListener('change',e=>{
+  if(e.target.id==='year-sel'){S.year=+e.target.value;render();}
+  else if(e.target.id==='r-from'||e.target.id==='r-to'){
+    let f=+$('#r-from').value, t=+$('#r-to').value; if(f>t)[f,t]=[t,f];
+    S.rFrom=f; S.rTo=t; render();
+  }
+});
+// 統計區間：季別、全年按鈕（上方列與各季統計表都有）
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-range]'); if(!b)return;
+  const [f,t]=b.dataset.range.split('-').map(Number); S.rFrom=f; S.rTo=t; render();
+});
 document.querySelectorAll('.vtb').forEach(b=>b.addEventListener('click',()=>{S.layout=b.dataset.layout;prefs(true);render();}));
 $('#fl-grade').innerHTML='<option value="">所有授權等級</option>'+GRADES.map(g=>`<option value="${g}">${g}</option>`).join('')+'<option value="-">未填</option>';
 $('#fl-status').innerHTML='<option value="">所有狀態</option>'+STATUSES.map(s=>`<option>${s}</option>`).join('');
