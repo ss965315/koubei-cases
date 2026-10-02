@@ -575,17 +575,17 @@ function renderStats(){
   const byM=MS.map(m=>yc.filter(c=>monthOf(c)===m).length);
   const maxM=Math.max(1,...byM);
   const heat=BRANCHES.map(br=>MS.map(m=>yc.filter(c=>c.branch===br&&monthOf(c)===m).length));
-  const maxH=Math.max(1,...heat.flat());
-  const heatCell=(v,max)=>{if(!v)return '<td style="color:var(--border2)">·</td>';const a=.12+.78*v/max;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
-  const heatTd=v=>heatCell(v,maxH);
+  // 白底表格：每一欄只標出最高的那一格（淺綠底＋粗體），0 件顯示「·」
+  const topCell=(v,max)=>!v?'<td style="color:var(--border2)">·</td>':v===max?`<td style="background:var(--accent-l);color:var(--accent);font-weight:700">${v}</td>`:`<td>${v}</td>`;
+  const colMaxH=MS.map((_,i)=>Math.max(...heat.map(r=>r[i])));
+  const heatTd=(v,i)=>topCell(v,colMaxH[i]);
 
   // 各季統計（全年，不受區間影響）：只算全臉公開
   const inQ=(c,q)=>monthOf(c)>=q.f&&monthOf(c)<=q.t;
   const qRows=BRANCHES.map(br=>QUARTERS.map(q=>yAll.filter(c=>c.branch===br&&isFull(c)&&inQ(c,q))));
-  const maxQ=Math.max(1,...qRows.flat().map(l=>l.length));
   const qSel=q=>S.rFrom===q.f&&S.rTo===q.t;
-  const qCell=l=>{const v=l.length;if(!v)return '<td style="color:var(--border2)">·</td>';
-    const a=.12+.78*v/maxQ;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
+  const colMaxQ=QUARTERS.map((_,i)=>Math.max(...qRows.map(r=>r[i].length)));
+  const qCell=(l,i)=>topCell(l.length,colMaxQ[i]);
 
   $('#content').innerHTML=`<div id="shot-area">
     <div class="sec-head"><span class="sec-title">📊 ${S.year} 年 ${rangeLabel()} 統計</span><button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button></div>
