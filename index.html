@@ -690,7 +690,7 @@ function renderBoard(){
   const row=(r,i,tag)=>`<div class="board-row ${i<3?'top'+(i+1):''}">
     <div class="board-rank">${i+1}</div>
     <div class="board-name-wrap"><div class="board-name">${i<3?medals[i]+' ':''}${esc(r.name)}${tag?`<span class="board-branch-tag">${esc(r.branch)}</span>`:''}</div>
-    <div class="board-sub">總案例 ${r.n} 件</div></div>
+    </div>
     <div class="board-count-wrap"><div class="board-count">${r.sa}</div><div class="board-count-lbl">全臉公開</div></div></div>`;
   const empty=t=>`<div class="empty" style="padding:30px 10px"><span class="empty-ico">🏆</span><p>${t}</p></div>`;
   $('#content').innerHTML=`<div class="board-wrap" id="shot-area">
