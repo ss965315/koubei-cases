@@ -565,7 +565,7 @@ function renderStats(){
   const yAll=statRows().filter(c=>yearOf(c)===S.year);
   const MS=Array.from({length:S.rTo-S.rFrom+1},(_,i)=>S.rFrom+i);   // 區間內的月份
   const yc=yAll.filter(c=>monthOf(c)>=S.rFrom&&monthOf(c)<=S.rTo);
-  const n=yc.length, sa=yc.filter(isSA).length;
+  const n=yc.length, sa=yc.filter(isFull).length;
   const disc=yc.reduce((s,c)=>s+(c.discount||0),0);
   const done=yc.filter(c=>c.status==='已完成').length, carded=yc.filter(c=>c.card).length;
   const brN=new Set(yc.map(c=>c.branch)).size;
@@ -579,29 +579,29 @@ function renderStats(){
   const heatCell=(v,max)=>{if(!v)return '<td style="color:var(--border2)">·</td>';const a=.12+.78*v/max;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
   const heatTd=v=>heatCell(v,maxH);
 
-  // 各季統計（全年，不受區間影響）
+  // 各季統計（全年，不受區間影響）：只算全臉公開
   const inQ=(c,q)=>monthOf(c)>=q.f&&monthOf(c)<=q.t;
-  const qRows=BRANCHES.map(br=>QUARTERS.map(q=>yAll.filter(c=>c.branch===br&&inQ(c,q))));
+  const qRows=BRANCHES.map(br=>QUARTERS.map(q=>yAll.filter(c=>c.branch===br&&isFull(c)&&inQ(c,q))));
   const maxQ=Math.max(1,...qRows.flat().map(l=>l.length));
   const qSel=q=>S.rFrom===q.f&&S.rTo===q.t;
-  const qCell=l=>{const v=l.length,s=l.filter(c=>c.grade==='全臉公開').length;if(!v)return '<td style="color:var(--border2)">·</td>';
-    const a=.12+.78*v/maxQ;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}<div style="font-size:9px;opacity:.8">全臉 ${s}</div></td>`;};
+  const qCell=l=>{const v=l.length;if(!v)return '<td style="color:var(--border2)">·</td>';
+    const a=.12+.78*v/maxQ;return `<td style="background:rgba(45,74,62,${a.toFixed(2)});color:${a>.5?'#fff':'var(--text)'}">${v}</td>`;};
 
   $('#content').innerHTML=`<div id="shot-area">
     <div class="sec-head"><span class="sec-title">📊 ${S.year} 年 ${rangeLabel()} 統計</span><button class="btn btn-sm no-shot" data-shot>📸 下載本頁截圖(jpg)</button></div>
     <div class="stat-grid">
       ${tile('案例數',n,`${rangeLabel()}・依銷售日`)}
       ${tile('有案例的分院',`${brN}<span style="font-size:13px;color:var(--text3)"> / ${BRANCHES.length}</span>`,'')}
-      ${tile('全臉＋匿名公開',sa,`高授權占比 ${pct(sa,n)}`)}
+      ${tile('全臉公開',sa,`占全部案例 ${pct(sa,n)}`)}
       ${tile('折讓金額合計','$'+fmt(disc),'')}
       ${tile('平均每案折讓','$'+fmt(n?Math.round(disc/n):0),'合計 ÷ 案例數')}
       ${tile('已完成',done,`完成率 ${pct(done,n)}`)}
       ${tile('櫃檯已開卡',carded,`開卡率 ${pct(carded,n)}`)}
     </div>
-    <div class="panel"><div class="panel-h">各季統計（${S.year} 年全年・點季別可切換）</div><div class="ovx"><table class="mtable">
+    <div class="panel"><div class="panel-h">各季全臉公開件數（${S.year} 年全年・點季別可切換）</div><div class="ovx"><table class="mtable">
       <thead><tr><th>分院</th>${QUARTERS.map(q=>`<th><button class="mbtn ${qSel(q)?'active':''}" data-range="${q.f}-${q.t}" style="padding:2px 6px">${q.l}<br><span style="font-weight:400;font-size:10px">${q.f}-${q.t}月</span></button></th>`).join('')}<th>全年</th></tr></thead>
       <tbody>${BRANCHES.map((br,bi)=>`<tr><td>${br}</td>${qRows[bi].map(qCell).join('')}<td class="tot">${qRows[bi].reduce((s,l)=>s+l.length,0)}</td></tr>`).join('')}
-      <tr class="total"><td>合計</td>${QUARTERS.map((q,qi)=>{const l=qRows.map(r=>r[qi]).flat();return `<td>${l.length}<div style="font-size:9px;font-weight:400">全臉 ${l.filter(c=>c.grade==='全臉公開').length}</div></td>`;}).join('')}<td>${yAll.length}</td></tr></tbody>
+      <tr class="total"><td>合計</td>${QUARTERS.map((q,qi)=>`<td>${qRows.reduce((s,r)=>s+r[qi].length,0)}</td>`).join('')}<td>${yAll.filter(isFull).length}</td></tr></tbody>
     </table></div></div>
     <div class="panel"><div class="panel-h">各月案例數（全分院合計・${rangeLabel()}）</div><div class="panel-b">
       <div class="bars" style="grid-template-columns:repeat(${MS.length},1fr)">${byM.map((v,i)=>`<div class="bar-col"><span class="bar-v">${v||''}</span><div class="bar ${v?'':'zero'}" style="height:${v?Math.max(4,v/maxM*150):2}px"></div><span class="bar-l">${MS[i]}月</span></div>`).join('')}</div>
