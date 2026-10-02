@@ -335,6 +335,7 @@ const fmt=n=>(Number(n)||0).toLocaleString('zh-TW');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const canEdit=()=>ADMIN;
 const isSA=c=>c.grade==='全臉公開'||c.grade==='匿名公開';   // 高授權
+const isFull=c=>c.grade==='全臉公開';
 const yearOf=c=>c.saleDate?+c.saleDate.slice(0,4):null;
 const monthOf=c=>c.saleDate?+c.saleDate.slice(5,7):null;
 const myBranches=()=>SESSION&&SESSION.branch?[SESSION.branch]:BRANCHES;
@@ -677,25 +678,25 @@ function renderBoard(){
   $('#board-period').innerHTML=ps.map(p=>`<option value="${p.v}" ${p.v===S.board?'selected':''}>${p.l}</option>`).join('');
   const pc=statRows().filter(inBoardPeriod);
   const rank=(a,b)=>b.n-a.n||b.sa-a.sa;
-  const brRows=BRANCHES.map(br=>{const l=pc.filter(c=>c.branch===br);return {name:br,n:l.length,sa:l.filter(isSA).length};}).sort(rank);
+  const brRows=BRANCHES.map(br=>{const l=pc.filter(c=>c.branch===br);return {name:br,n:l.length,sa:l.filter(isFull).length};}).sort(rank);
   const cm=new Map();
   // 一筆案例有多位諮詢師（以「、」分隔）時，每人各計一筆
   pc.forEach(c=>String(c.consultant||'').split(/[、,，\/]/).map(x=>x.trim()).filter(Boolean).forEach(nm=>{
     const k=c.branch+'|'+nm; if(!cm.has(k))cm.set(k,{name:nm,branch:c.branch,n:0,sa:0});
-    const r=cm.get(k); r.n++; if(isSA(c))r.sa++;}));
+    const r=cm.get(k); r.n++; if(isFull(c))r.sa++;}));
   const csRows=[...cm.values()].sort(rank).slice(0,10);
   const medals=['🥇','🥈','🥉'];
   const row=(r,i,tag)=>`<div class="board-row ${i<3?'top'+(i+1):''}">
     <div class="board-rank">${i+1}</div>
     <div class="board-name-wrap"><div class="board-name">${i<3?medals[i]+' ':''}${esc(r.name)}${tag?`<span class="board-branch-tag">${esc(r.branch)}</span>`:''}</div>
-    <div class="board-sub">全臉＋匿名公開 ${r.sa} 件</div></div>
+    <div class="board-sub">全臉公開 ${r.sa} 件</div></div>
     <div class="board-count-wrap"><div class="board-count">${r.n}</div><div class="board-count-lbl">案例數</div></div></div>`;
   const empty=t=>`<div class="empty" style="padding:30px 10px"><span class="empty-ico">🏆</span><p>${t}</p></div>`;
   $('#content').innerHTML=`<div class="board-wrap" id="shot-area">
     <div class="board-head">
       <div class="board-head-eyebrow">MEGAIA · HONOR BOARD</div>
       <div class="board-head-title">🏆 口碑案例戰情榜｜${esc(boardLabel())}</div>
-      <div class="board-head-sub">期間共 ${pc.length} 件案例，其中全臉＋匿名公開 ${pc.filter(isSA).length} 件。排名依案例數，同數比全臉＋匿名公開件數。</div>
+      <div class="board-head-sub">期間共 ${pc.length} 件案例，其中全臉公開 ${pc.filter(isFull).length} 件。排名依案例數，同數比全臉公開件數。</div>
     </div>
     <div class="board-body"><div class="board-grid">
       <div><div class="board-col-title">分院排行 <small>六家全列</small></div>${brRows.map((r,i)=>row(r,i,false)).join('')}</div>
