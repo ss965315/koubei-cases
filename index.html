@@ -334,6 +334,43 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const fmt=n=>(Number(n)||0).toLocaleString('zh-TW');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const canEdit=()=>ADMIN;
+// 總部帳號：可在網站上勾術前、術後、開卡、改狀態與備註（先存在這台電腦，再匯出給管理者）
+const canFlag=()=>ADMIN||(!!SESSION&&!SESSION.branch);
+const FLAG_FIELDS=['status','cbPre','cbPost','card','note'];
+let edits={};
+const editsKey=()=>'koubei_edits_'+(SESSION?SESSION.id:'');
+function saveEdits(){try{localStorage.setItem(editsKey(),JSON.stringify(edits));}catch(e){}}
+function loadEdits(){
+  try{edits=JSON.parse(localStorage.getItem(editsKey())||'{}')||{};}catch(e){edits={};}
+  // 套用尚未發佈的修改；網站資料已經一樣的就自動移除
+  for(const [id,e] of Object.entries(edits)){
+    const c=cases.find(x=>x.id===id);
+    if(!c||FLAG_FIELDS.every(f=>(c[f]??'')===(e[f]??''))){delete edits[id];continue;}
+    FLAG_FIELDS.forEach(f=>c[f]=e[f]);
+  }
+  saveEdits();
+}
+function recordEdit(c){
+  edits[c.id]={branch:c.branch,saleDate:c.saleDate||'',name:c.name||'',code:c.code||'',
+    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',at:Date.now()};
+  saveEdits(); updateEditBtn();
+}
+function updateEditBtn(){
+  const b=$('#btn-edits'); if(!b)return;
+  const n=Object.keys(edits).length;
+  b.textContent=`📤 匯出修改${n?`（${n}）`:''}`; b.disabled=!n;
+}
+function exportEdits(){
+  const list=Object.values(edits); if(!list.length){toast('目前沒有修改');return;}
+  const yn=v=>v?'是':'否';
+  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','備註'],
+    ...list.map(e=>[e.branch,e.saleDate,e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.note])]);
+  ws['!cols']=[6,11,10,12,10,6,6,8,30].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'總部修改');
+  XLSX.writeFile(wb,`口碑案例_總部修改_${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
+  notice('📤 已匯出修改',`<div class="notice-list">共 <b>${list.length}</b> 筆修改</div>
+    <p class="notice-sub">請把下載的「口碑案例_總部修改_….xlsx」交給管理者。<br>管理者在管理頁按「📥 匯入報表」匯入這個檔案，再按「🌐 發佈到網站」，大家就會看到。<br><br>網站更新後，這台電腦暫存的修改會自動清掉。</p>`);
+}
 const isSA=c=>c.grade==='全臉公開'||c.grade==='匿名公開';   // 高授權
 const isFull=c=>c.grade==='全臉公開';
 const yearOf=c=>c.saleDate?+c.saleDate.slice(0,4):null;
@@ -449,9 +486,11 @@ function renderHeader(){
     h.push('<button class="btn btn-danger" id="btn-clear" title="刪除這台電腦裡的全部案例">🗑 清空全部資料</button>');
   }
   h.push('<button class="btn" id="btn-export">↓ 匯出 XLSX</button>');
+  if(!ADMIN&&canFlag())h.unshift('<button class="btn btn-pub" id="btn-edits">📤 匯出修改</button>');
   if(!ADMIN)h.push('<button class="btn" id="btn-logout">登出</button>');
   $('#hright').innerHTML=h.join('');
   if(!ADMIN)setSaveLabel(`● ${SESSION.label}（${SESSION.id}）・資料更新 ${fmtTime(SESSION.updatedAt)}`,'');
+  updateEditBtn();
 }
 
 function render(){
@@ -506,7 +545,7 @@ function renderCases(){
   $('#count-lbl').textContent=`共 ${list.length} 筆`;
   const hasAny=cases.some(c=>c.branch===S.branch);
   const emptyMsg=hasAny?'沒有符合條件的案例':'此分院尚無案例';
-  const ro=canEdit()?'':'disabled';
+  const ro=canFlag()?'':'disabled';
   const cb=(c,f,cls='')=>`<input type="checkbox" class="cb ${cls}" data-flag="${f}" data-id="${c.id}" ${c[f]?'checked':''} ${ro}>`;
 
   if(S.layout==='list'){
@@ -731,13 +770,15 @@ function notice(title,body){
 function openCase(id){
   const c=id?cases.find(x=>x.id===id):null;
   if(id&&!c)return;
-  const ro=!canEdit(), dis=ro?'disabled':'';
+  // full：管理模式可改全部；flagOnly：總部帳號只能改狀態、術前、術後、開卡、備註
+  const flagOnly=!ADMIN&&canFlag()&&!!c;
+  const ro=!canEdit()&&!flagOnly, dis=canEdit()?'':'disabled', fdis=ro?'disabled':'';
   const d=c||{branch:S.view==='branch'?S.branch:BRANCHES[0],status:'進行中',discount:0};
   const opt=(arr,v,blank)=>(blank!=null?`<option value="">${blank}</option>`:'')+arr.map(x=>`<option value="${x}" ${x===v?'selected':''}>${x}</option>`).join('');
   const consultants=[...new Set(cases.map(x=>(x.consultant||'').trim()).filter(Boolean))].sort();
-  const ck=(n,l)=>`<label><input type="checkbox" class="cb" name="${n}" ${d[n]?'checked':''} ${dis}> ${l}</label>`;
+  const ck=(n,l)=>`<label><input type="checkbox" class="cb" name="${n}" ${d[n]?'checked':''} ${fdis}> ${l}</label>`;
 
-  const ov=openOverlay(`<div class="modal"><div class="modal-h"><span class="modal-t">${ro?'案例內容':c?'編輯案例':'新增案例'}</span><button class="btn btn-icon" data-close>✕</button></div>
+  const ov=openOverlay(`<div class="modal"><div class="modal-h"><span class="modal-t">${ro?'案例內容':flagOnly?'更新案例進度':c?'編輯案例':'新增案例'}</span><button class="btn btn-icon" data-close>✕</button></div>
   <div class="modal-b"><form id="case-form" onsubmit="return false">
     <div class="sec-lbl">基本資料</div>
     <div class="fgrid">
@@ -749,14 +790,15 @@ function openCase(id){
       <div class="fg"><label>顧客代碼 <span class="req">*</span></label><input name="code" value="${esc(d.code||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
       <div class="fg"><label>授權等級</label><select name="grade" ${dis}>${opt(GRADES,d.grade||'','未填').replace(/>(全臉公開|匿名公開|院內公開|無折扣)</g,(m,g)=>`>${g}（$${fmt(GRADE_AMT[g])}）<`)}</select></div>
       <div class="fg"><label>折讓金額（元）</label><input type="number" name="discount" step="1" min="0" value="${d.discount||0}" ${dis}></div>
-      <div class="fg fg-full"><label>狀態</label><select name="status" ${dis}>${opt(STATUSES,d.status||'進行中')}</select></div>
+      <div class="fg fg-full"><label>狀態</label><select name="status" ${fdis}>${opt(STATUSES,d.status||'進行中')}</select></div>
     </div>
     <div class="sec-lbl">素材與開卡</div>
     <div class="checks">${ck('cbPre','術前')}${ck('cbPost','術後')}${ck('card','櫃檯已開卡')}</div>
-    <div class="fg"><label>備註</label><textarea name="note" ${dis}>${esc(d.note||'')}</textarea></div>
+    <div class="fg"><label>備註</label><textarea name="note" ${fdis}>${esc(d.note||'')}</textarea></div>
+    ${flagOnly?'<p class="hint">修改會先存在這台電腦。改完請按上方「📤 匯出修改」，把檔案交給管理者匯入發佈。</p>':''}
   </form></div>
   <div class="modal-f">
-    ${c&&!ro?'<button class="btn btn-danger" data-del>🗑 刪除案例</button>':''}<span class="grow"></span>
+    ${c&&canEdit()?'<button class="btn btn-danger" data-del>🗑 刪除案例</button>':''}<span class="grow"></span>
     ${ro?'<button class="btn btn-primary" data-close>關閉</button>':'<button class="btn" data-close>取消</button><button class="btn btn-primary" data-save>儲存</button>'}
   </div></div>`);
   const root=ov.el;
@@ -764,6 +806,16 @@ function openCase(id){
   root.querySelector('[name=grade]').addEventListener('change',e=>{
     const g=e.target.value; if(g in GRADE_AMT)root.querySelector('[name=discount]').value=GRADE_AMT[g];
   });
+
+  if(flagOnly){
+    root.querySelector('[data-save]').addEventListener('click',()=>{
+      const f=new FormData(root.querySelector('#case-form'));
+      Object.assign(c,{status:String(f.get('status')||'進行中'),cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),
+        card:!!f.get('card'),note:String(f.get('note')||'').trim()});
+      recordEdit(c); ov.close(); render(); toast('✓ 已暫存，記得按「📤 匯出修改」');
+    });
+    return;
+  }
 
   root.querySelector('[data-del]')?.addEventListener('click',async()=>{
     if(!confirm(`確定刪除「${c.name||c.code}」這筆案例？\n\n刪除後無法復原。`))return;
@@ -1091,6 +1143,7 @@ $('#hright').addEventListener('click',e=>{
   else if(b.id==='btn-pw')openPasswords();
   else if(b.id==='btn-publish')publish();
   else if(b.id==='btn-clear')clearAll();
+  else if(b.id==='btn-edits')exportEdits();
   else if(b.id==='btn-logout'){try{sessionStorage.removeItem('koubei_session');}catch(err){}location.reload();}
 });
 $('#import-file').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';importFiles(fs);});
@@ -1104,9 +1157,10 @@ $('#content').addEventListener('click',async e=>{
   const cb=e.target.closest('[data-flag]');
   if(cb){
     e.stopPropagation();
-    if(!canEdit()){e.preventDefault();return;}
+    if(!canFlag()){e.preventDefault();return;}
     const c=cases.find(x=>x.id===cb.dataset.id); if(!c)return;
     const f=cb.dataset.flag; c[f]=cb.checked; c.updatedAt=Date.now();
+    if(!ADMIN){recordEdit(c);return;}
     try{await persist([c]);}catch(err){cb.checked=!cb.checked;c[f]=cb.checked;}
     return;
   }
@@ -1128,6 +1182,7 @@ async function loadEnc(){
 function startSession(d){
   SESSION={id:d.id,label:d.label,branch:d.branch,updatedAt:d.updatedAt};
   cases=(d.cases||[]).map(fixGrade); allRows=d.all?d.all.map(fixGrade):null;
+  if(canFlag())loadEdits();
   if(d.branch)S.branch=d.branch;
   $('#login').hidden=true; $('#app').hidden=false;
   renderHeader(); render();
