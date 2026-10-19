@@ -317,9 +317,9 @@ const staffOf=(br,y,m)=>br==='竹北'?((y>2026||(y===2026&&m>=6))?'高麗雯':'�
 // KPI：2026/6 起「總計≥3 且 全臉公開≥1」；之前「總計≥3 且 全臉或匿名公開≥1」
 const isNewKPI=(y,m)=>y>2026||(y===2026&&m>=6);
 function kpiOf(list,y,m){
-  const s=list.filter(c=>c.grade==='全臉公開').length, a=list.filter(c=>c.grade==='匿名公開').length, n=list.length;
+  const s=list.filter(c=>c.grade==='全臉公開').length, a=list.filter(c=>c.grade==='匿名公開').length, n=list.length, inner=list.filter(c=>c.grade==='院內公開').length;
   const neu=isNewKPI(y,m), ok=neu?(n>=3&&s>=1):(n>=3&&s+a>=1);
-  return {s,a,n,ok,why:ok?'':n<3?'案例不足':neu?'缺全臉公開':'缺全臉或匿名公開'};
+  return {s,a,inner,n,ok,why:ok?'':n<3?'案例不足':neu?'缺全臉公開':'缺全臉或匿名公開'};
 }
 const NOW=new Date(), CUR_Y=NOW.getFullYear(), CUR_M=NOW.getMonth()+1;
 const pad=n=>String(n).padStart(2,'0');
@@ -681,14 +681,14 @@ function kpiSection(yc){
         </span>
       </div>
       <div class="ovx"><table class="mtable">
-        <thead><tr><th>分院</th><th style="text-align:left">組員姓名</th><th>全臉公開</th><th>匿名公開</th><th>其他</th><th>總計</th><th>KPI 達標</th></tr></thead>
+        <thead><tr><th>分院</th><th style="text-align:left">組員姓名</th><th>全臉公開</th><th>匿名公開</th><th>院內公開</th><th>總計</th><th>KPI 達標</th></tr></thead>
         <tbody>${rows.map(r=>`<tr style="${r.ok?'':'background:#FFF8F8'}">
           <td>${r.br}</td><td style="text-align:left;font-family:'Noto Sans TC',sans-serif">${esc(r.staff||'—')}</td>
           <td>${r.s?`<b style="color:#1B5C3A">${r.s}</b>`:''}</td><td>${r.a?`<b style="color:#1A3A6C">${r.a}</b>`:''}</td>
-          <td>${(r.n-r.s-r.a)||''}</td><td style="font-weight:700">${r.n||''}</td>
+          <td>${r.inner||''}</td><td style="font-weight:700">${r.n||''}</td>
           <td style="font-family:'Noto Sans TC',sans-serif;font-size:11px">${r.ok?'<b style="color:var(--ok)">✅ 達標</b>':`<span style="color:var(--pink)">⚠️ ${r.why}</span>`}</td>
         </tr>`).join('')}
-        <tr class="total"><td colspan="2">${m} 月總計</td><td>${sum('s')}</td><td>${sum('a')}</td><td>${sum('n')-sum('s')-sum('a')}</td><td>${sum('n')}</td>
+        <tr class="total"><td colspan="2">${m} 月總計</td><td>${sum('s')}</td><td>${sum('a')}</td><td>${sum('inner')}</td><td>${sum('n')}</td>
           <td style="font-family:'Noto Sans TC',sans-serif;font-size:11px">${okN}/${BRANCHES.length} 達標</td></tr>
         </tbody></table></div>
     </div>`;
