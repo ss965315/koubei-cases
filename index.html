@@ -187,7 +187,9 @@ tr.is-cancel td{color:var(--mute)}
 .top1 .board-count{font-size:25px}
 .board-count-lbl{font-size:9px;color:var(--text3)}
 .board-count-wrap.post .board-count{color:var(--ok)}
-.board-count-wrap.post{padding-left:12px;border-left:1px dashed var(--border2)}
+.board-count-wrap.sa{padding-left:12px;border-left:1px dashed var(--border2)}
+.board-count-wrap.sa .board-count{font-size:16px;color:var(--text2)}
+.top1 .board-count-wrap.sa .board-count{font-size:16px}
 .ph-line{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
 .ph{font-size:10px;padding:1px 8px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--text2);white-space:nowrap}
 .ph-post{color:var(--ok);border-color:#B8D4C4;background:var(--ok-bg)}
@@ -727,11 +729,17 @@ function renderBoard(){
   $('#board-period').innerHTML=ps.map(p=>`<option value="${p.v}" ${p.v===S.board?'selected':''}>${p.l}</option>`).join('');
   const pc=statRows().filter(inBoardPeriod);
   // 全臉公開＋術後拍攝戰力榜：只看全臉公開案例，拆成 術後完成／術前（尚未術後）／未拍攝
-  // 排名先比全臉公開件數，同數比術後拍攝完成件數
+  // 排名以術後拍攝完成件數為主，同數比全臉公開件數
   const blank=()=>({sa:0,post:0,pre:0,none:0});
   const tally=(r,c)=>{if(!isFull(c))return;r.sa++;if(c.cbPost)r.post++;else if(c.cbPre)r.pre++;else r.none++;};
-  const rank=(a,b)=>b.sa-a.sa||b.post-a.post;
+  const rank=(a,b)=>b.post-a.post||b.sa-a.sa;
   const brRows=BRANCHES.map(br=>{const r={name:br,...blank()};pc.filter(c=>c.branch===br).forEach(c=>tally(r,c));return r;}).sort(rank);
+  const cm=new Map();
+  // 一筆案例有多位諮詢師（以「、」分隔）時，每人各計一筆
+  pc.forEach(c=>String(c.consultant||'').split(/[、,，\/]/).map(x=>x.trim()).filter(Boolean).forEach(nm=>{
+    const k=c.branch+'|'+nm; if(!cm.has(k))cm.set(k,{name:nm,branch:c.branch,...blank()});
+    tally(cm.get(k),c);}));
+  const csRows=[...cm.values()].filter(r=>r.sa).sort(rank).slice(0,10);
   const tot=blank(); pc.forEach(c=>tally(tot,c));
   const medals=['🥇','🥈','🥉'];
   const bar=r=>r.sa?`<div class="ph-bar"><i class="b-post" style="width:${r.post/r.sa*100}%"></i><i class="b-pre" style="width:${r.pre/r.sa*100}%"></i></div>`:'';
@@ -741,17 +749,19 @@ function renderBoard(){
       <div class="ph-line"><span class="ph ph-post">✅ 術後完成 ${r.post}</span><span class="ph ph-pre">📷 術前 ${r.pre}</span><span class="ph ph-none">⬜ 未拍攝 ${r.none}</span></div>
       ${bar(r)}
     </div>
-    <div class="board-count-wrap"><div class="board-count">${r.sa}</div><div class="board-count-lbl">全臉公開</div></div>
-    <div class="board-count-wrap post"><div class="board-count">${r.post}</div><div class="board-count-lbl">術後完成</div></div></div>`;
+    <div class="board-count-wrap post"><div class="board-count">${r.post}</div><div class="board-count-lbl">術後完成</div></div>
+    <div class="board-count-wrap sa"><div class="board-count">${r.sa}</div><div class="board-count-lbl">全臉公開</div></div></div>`;
+  const empty=t=>`<div class="empty" style="padding:30px 10px"><span class="empty-ico">🏆</span><p>${t}</p></div>`;
   $('#content').innerHTML=`<div class="board-wrap" id="shot-area">
     <div class="board-head">
       <div class="board-head-eyebrow">MEGAIA · HONOR BOARD</div>
       <div class="board-head-title">🏆 全臉公開＋術後拍攝戰力榜｜${esc(boardLabel())}</div>
-      <div class="board-head-sub">期間共 ${tot.sa} 件全臉公開：術後拍攝完成 ${tot.post} 件、術前 ${tot.pre} 件、未拍攝 ${tot.none} 件。<br>排名依全臉公開件數，同數比術後拍攝完成件數。</div>
+      <div class="board-head-sub">期間共 ${tot.sa} 件全臉公開：術後拍攝完成 ${tot.post} 件、術前 ${tot.pre} 件、未拍攝 ${tot.none} 件。<br>排名以術後拍攝完成件數為主，同數比全臉公開件數。</div>
     </div>
-    <div class="board-body">
-      <div class="board-col-title">分院排行 <small>六家全列</small></div>${brRows.map((r,i)=>row(r,i,false)).join('')}
-    </div>
+    <div class="board-body"><div class="board-grid">
+      <div><div class="board-col-title">分院排行 <small>六家全列</small></div>${brRows.map((r,i)=>row(r,i,false)).join('')}</div>
+      <div><div class="board-col-title">諮詢師排行 <small>前 10 名・跨分院分開計</small></div>${csRows.length?csRows.map((r,i)=>row(r,i,true)).join(''):empty('此期間尚無全臉公開案例')}</div>
+    </div></div>
     <div class="board-foot">每一筆授權案例，都是美加最珍貴的真實口碑資產 ✨</div>
   </div>`;
 }
