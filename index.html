@@ -349,6 +349,13 @@ const canEdit=()=>ADMIN;
 // 總部帳號：可在網站上勾術前、術後、開卡、改狀態與備註（先存在這台電腦，再匯出給管理者）
 const canFlag=()=>ADMIN||(!!SESSION&&!SESSION.branch);
 const FLAG_FIELDS=['status','cbPre','cbPost','card','note'];
+// 自動規則：術後拍攝完成 → 狀態「已完成」；術前有拍 → 櫃檯開卡打勾。回傳是否有變動
+function applyRules(c){
+  const before=c.status+'|'+c.card;
+  if(c.cbPost)c.status='已完成';
+  if(c.cbPre)c.card=true;
+  return before!==c.status+'|'+c.card;
+}
 let edits={};
 const editsKey=()=>'koubei_edits_'+(SESSION?SESSION.id:'');
 function saveEdits(){try{localStorage.setItem(editsKey(),JSON.stringify(edits));}catch(e){}}
@@ -832,7 +839,7 @@ function openCase(id){
       const f=new FormData(root.querySelector('#case-form'));
       Object.assign(c,{status:String(f.get('status')||'進行中'),cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),
         card:!!f.get('card'),note:String(f.get('note')||'').trim()});
-      recordEdit(c); ov.close(); render(); toast('✓ 已暫存，記得按「📤 匯出修改」');
+      applyRules(c); recordEdit(c); ov.close(); render(); toast('✓ 已暫存，記得按「📤 匯出修改」');
     });
     return;
   }
@@ -854,6 +861,7 @@ function openCase(id){
     const k=caseKey(rec), dup=cases.find(x=>x.id!==(c&&c.id)&&caseKey(x)===k);
     if(dup&&!confirm('已經有一筆「分院＋顧客＋銷售日」相同的案例，仍要儲存嗎？'))return;
     const obj=c?Object.assign(c,rec):{id:uid(),createdAt:Date.now(),...rec};
+    applyRules(obj);
     obj.updatedAt=Date.now();
     await persist([obj]);
     if(!c)cases.push(obj);
@@ -1065,6 +1073,7 @@ async function importFiles(files){
         }
       }
     }
+    touched.forEach(c=>applyRules(c));
     if(touched.size)await persist([...touched.values()]);
   }catch(err){
     cases=await DB.allCases();
@@ -1180,8 +1189,11 @@ $('#content').addEventListener('click',async e=>{
     if(!canFlag()){e.preventDefault();return;}
     const c=cases.find(x=>x.id===cb.dataset.id); if(!c)return;
     const f=cb.dataset.flag; c[f]=cb.checked; c.updatedAt=Date.now();
-    if(!ADMIN){recordEdit(c);return;}
-    try{await persist([c]);}catch(err){cb.checked=!cb.checked;c[f]=cb.checked;}
+    // 取消術後時，原本因規則變成「已完成」的改回「進行中」
+    if(f==='cbPost'&&!cb.checked&&c.status==='已完成')c.status='進行中';
+    const changed=applyRules(c)||f==='cbPost';
+    if(!ADMIN){recordEdit(c);if(changed)render();return;}
+    try{await persist([c]);if(changed)render();}catch(err){cb.checked=!cb.checked;c[f]=cb.checked;}
     return;
   }
   if(e.target.closest('label'))return;
@@ -1202,6 +1214,7 @@ async function loadEnc(){
 function startSession(d){
   SESSION={id:d.id,label:d.label,branch:d.branch,updatedAt:d.updatedAt};
   cases=(d.cases||[]).map(fixGrade); allRows=d.all?d.all.map(fixGrade):null;
+  cases.forEach(applyRules); if(allRows)allRows.forEach(applyRules);
   if(canFlag())loadEdits();
   if(d.branch)S.branch=d.branch;
   $('#login').hidden=true; $('#app').hidden=false;
@@ -1215,6 +1228,9 @@ function startSession(d){
       await DB.open();cases=await DB.allCases();
       const old=cases.filter(c=>OLD_GRADE[c.grade]);
       if(old.length){old.forEach(fixGrade);await persist(old);}
+      // 現有資料套用自動規則（術後→已完成、術前→櫃檯開卡）
+      const ruled=cases.filter(applyRules);
+      if(ruled.length){await persist(ruled);toast(`已依規則更新 ${ruled.length} 筆（術後→已完成、術前→櫃檯開卡），請記得發佈`);}
     }
     catch(e){notice('無法開啟本機儲存',`<p class="notice-sub">這個瀏覽器不允許儲存資料（可能是無痕模式），資料不會被保存。</p>`);}
     $('#app').hidden=false; renderHeader(); updateAdminLabel(); render();
