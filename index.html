@@ -501,6 +501,7 @@ function renderHeader(){
   if(ADMIN){
     h.push('<button class="btn" id="btn-pw">🔑 設定帳號密碼</button>');
     h.push('<button class="btn" id="btn-import">📥 匯入報表</button>');
+    h.push('<button class="btn" id="btn-surg">📅 批次填手術日</button>');
     h.push('<button class="btn btn-primary" id="btn-add">＋ 新增案例</button>');
     h.push('<button class="btn btn-pub" id="btn-publish">🌐 發佈到網站</button>');
     h.push('<button class="btn btn-danger" id="btn-clear" title="刪除這台電腦裡的全部案例">🗑 清空全部資料</button>');
@@ -872,6 +873,74 @@ function openCase(id){
   });
 }
 
+// ══════════════════════════════════════════
+//  批次填手術日：貼上「王小明 11/10」一行一位
+// ══════════════════════════════════════════
+function parseSurgLines(text){
+  const out=[];
+  text.split(/\r?\n/).forEach(raw=>{
+    const line=raw.trim(); if(!line)return;
+    const m=line.match(/^(.*?)[\s,，、:：]*(?:(\d{2,4})\s*[\/\-.年]\s*)?(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?/);
+    const name=m?m[1].replace(/[\s,，、:：]+$/,'').trim():'';
+    if(!m||!name){out.push({line,err:'看不懂這一行'});return;}
+    let y=m[2]?+m[2]:0; if(y&&y<1000)y+=y<200?1911:2000;
+    const mo=+m[3], d=+m[4];
+    if(mo<1||mo>12||d<1||d>31){out.push({line,err:'日期不對'});return;}
+    out.push({line,name,y,mo,d});
+  });
+  return out;
+}
+// 沒寫年份時：選不早於銷售日、且最接近今天的年份
+function surgDateFor(r,c){
+  const mk=y=>`${y}-${pad(r.mo)}-${pad(r.d)}`;
+  if(r.y)return mk(r.y);
+  const ys=[CUR_Y-1,CUR_Y,CUR_Y+1].filter(y=>!c||!c.saleDate||mk(y)>=c.saleDate);
+  const today=`${CUR_Y}-${pad(CUR_M)}-${pad(NOW.getDate())}`, dist=s=>Math.abs(new Date(s)-new Date(today));
+  return mk((ys.length?ys:[CUR_Y]).sort((a,b)=>dist(mk(a))-dist(mk(b)))[0]);
+}
+function openSurgBatch(){
+  const ov=openOverlay(`<div class="modal" style="max-width:640px"><div class="modal-h"><span class="modal-t">📅 批次填手術日</span><button class="btn btn-icon" data-close>✕</button></div>
+  <div class="modal-b">
+    <p class="hint">一行一位：<b>顧客姓名（或顧客代碼）＋日期</b>，例如：<br><code>王小明 11/10</code><br><code>陳美美 11/12</code></p>
+    <textarea id="sb-text" style="width:100%;min-height:140px;font:inherit" placeholder="王小明 11/10&#10;陳美美 11/12"></textarea>
+    <div id="sb-prev" style="margin-top:10px"></div>
+  </div>
+  <div class="modal-f"><span class="grow"></span><button class="btn" data-close>取消</button><button class="btn" id="sb-check">① 檢查</button><button class="btn btn-primary" id="sb-ok" disabled>② 確認填入</button></div></div>`);
+  const root=ov.el; let rows=[];
+  const caseLbl=c=>`${c.branch}｜銷售 ${c.saleDate||'未填'}｜${esc(c.code||'')}${c.surgeryDate?`｜目前手術日 ${c.surgeryDate}`:''}`;
+  root.querySelector('#sb-check').addEventListener('click',()=>{
+    rows=parseSurgLines(root.querySelector('#sb-text').value);
+    rows.forEach(r=>{
+      if(r.err)return;
+      const key=r.name.replace(/\s/g,'');
+      r.matches=cases.filter(c=>(c.name||'').replace(/\s/g,'')===key||(c.code||'').toUpperCase()===key.toUpperCase());
+      // 同名多筆：優先選還沒填手術日、銷售日最近的那筆
+      r.matches.sort((a,b)=>(!!a.surgeryDate-!!b.surgeryDate)||String(b.saleDate||'').localeCompare(String(a.saleDate||'')));
+    });
+    root.querySelector('#sb-prev').innerHTML=rows.length?`<table class="case-table" style="width:100%"><thead><tr><th>貼上的內容</th><th>手術日</th><th>對應案例</th></tr></thead><tbody>${rows.map((r,i)=>{
+      if(r.err)return `<tr><td>${esc(r.line)}</td><td colspan="2" style="color:var(--danger,#B00020)">✕ ${r.err}</td></tr>`;
+      if(!r.matches.length)return `<tr><td>${esc(r.line)}</td><td>—</td><td style="color:var(--danger,#B00020)">✕ 找不到「${esc(r.name)}」</td></tr>`;
+      const opts=r.matches.map((c,j)=>`<option value="${j}">${caseLbl(c)}</option>`).join('')+'<option value="-1">（不要填這筆）</option>';
+      return `<tr><td>${esc(r.line)}</td><td class="mono">${surgDateFor(r,r.matches[0])}</td><td>${r.matches.length>1?`<span style="color:#B8860B">⚠ 同名 ${r.matches.length} 筆，請確認：</span><br>`:''}<select data-sb="${i}" style="max-width:100%">${opts}</select></td></tr>`;
+    }).join('')}</tbody></table>`:'<p class="hint">沒有貼上任何內容</p>';
+    root.querySelectorAll('[data-sb]').forEach(s=>s.addEventListener('change',()=>{
+      const r=rows[+s.dataset.sb], c=r.matches[+s.value];
+      s.closest('tr').children[1].textContent=c?surgDateFor(r,c):'—';
+    }));
+    root.querySelector('#sb-ok').disabled=!rows.some(r=>r.matches&&r.matches.length);
+  });
+  root.querySelector('#sb-ok').addEventListener('click',async()=>{
+    const done=[];
+    root.querySelectorAll('[data-sb]').forEach(s=>{
+      const r=rows[+s.dataset.sb], c=r.matches[+s.value]; if(!c)return;
+      c.surgeryDate=surgDateFor(r,c); c.updatedAt=Date.now(); done.push(c);
+    });
+    if(!done.length){toast('沒有要填的案例');return;}
+    await persist(done); ov.close(); render();
+    toast(`✓ 已填入 ${done.length} 筆手術日，記得按「🌐 發佈到網站」`);
+  });
+}
+
 async function clearAll(){
   if(!cases.length){toast('目前沒有資料');return;}
   if(!confirm(`確定要刪除這台電腦裡的全部 ${cases.length} 筆案例嗎？\n\n刪除後無法復原。帳號密碼設定會保留。\n（網站上的資料要等下次「發佈到網站」才會更新）`))return;
@@ -1173,6 +1242,7 @@ $('#hright').addEventListener('click',e=>{
   else if(b.id==='btn-pw')openPasswords();
   else if(b.id==='btn-publish')publish();
   else if(b.id==='btn-clear')clearAll();
+  else if(b.id==='btn-surg')openSurgBatch();
   else if(b.id==='btn-edits')exportEdits();
   else if(b.id==='btn-logout'){try{sessionStorage.removeItem('koubei_session');}catch(err){}location.reload();}
 });
