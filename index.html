@@ -100,6 +100,7 @@ code{font-family:var(--mono);font-size:11px;color:var(--text2)}
 .cb{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
 .cb-post{accent-color:var(--pink)}
 .cb:disabled{cursor:default;opacity:1}
+.sd-in{font:inherit;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:transparent;color:inherit;width:118px}
 
 /* badges */
 .g{display:inline-block;text-align:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;border:1px solid transparent;white-space:nowrap}
@@ -348,13 +349,12 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const canEdit=()=>ADMIN;
 // 總部帳號：可在網站上勾術前、術後、開卡、改狀態與備註（先存在這台電腦，再匯出給管理者）
 const canFlag=()=>ADMIN||(!!SESSION&&!SESSION.branch);
-const FLAG_FIELDS=['status','cbPre','cbPost','card','note'];
-// 自動規則：術後拍攝完成 → 狀態「已完成」；術前或術後有拍 → 櫃檯開卡打勾。回傳是否有變動
+const FLAG_FIELDS=['status','cbPre','cbPost','card','note','surgeryDate'];
+// 自動規則：術後拍攝完成 → 狀態「已完成」（櫃檯開卡一律手動勾）。回傳是否有變動
 function applyRules(c){
-  const before=c.status+'|'+c.card;
+  const before=c.status;
   if(c.cbPost)c.status='已完成';
-  if(c.cbPre||c.cbPost)c.card=true;
-  return before!==c.status+'|'+c.card;
+  return before!==c.status;
 }
 let edits={};
 const editsKey=()=>'koubei_edits_'+(SESSION?SESSION.id:'');
@@ -364,14 +364,15 @@ function loadEdits(){
   // 套用尚未發佈的修改；網站資料已經一樣的就自動移除
   for(const [id,e] of Object.entries(edits)){
     const c=cases.find(x=>x.id===id);
-    if(!c||FLAG_FIELDS.every(f=>(c[f]??'')===(e[f]??''))){delete edits[id];continue;}
-    FLAG_FIELDS.forEach(f=>c[f]=e[f]);
+    const fs=FLAG_FIELDS.filter(f=>f in e);
+    if(!c||fs.every(f=>(c[f]??'')===(e[f]??''))){delete edits[id];continue;}
+    fs.forEach(f=>c[f]=e[f]);
   }
   saveEdits();
 }
 function recordEdit(c){
   edits[c.id]={branch:c.branch,saleDate:c.saleDate||'',name:c.name||'',code:c.code||'',
-    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',at:Date.now()};
+    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',surgeryDate:c.surgeryDate||'',at:Date.now()};
   saveEdits(); updateEditBtn();
 }
 function updateEditBtn(){
@@ -382,9 +383,9 @@ function updateEditBtn(){
 function exportEdits(){
   const list=Object.values(edits); if(!list.length){toast('目前沒有修改');return;}
   const yn=v=>v?'是':'否';
-  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','備註'],
-    ...list.map(e=>[e.branch,e.saleDate,e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.note])]);
-  ws['!cols']=[6,11,10,12,10,6,6,8,30].map(w=>({wch:w}));
+  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','手術日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','備註'],
+    ...list.map(e=>[e.branch,e.saleDate,e.surgeryDate||'',e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.note])]);
+  ws['!cols']=[6,11,11,10,12,10,6,6,8,30].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'總部修改');
   XLSX.writeFile(wb,`口碑案例_總部修改_${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
   notice('📤 已匯出修改',`<div class="notice-list">共 <b>${list.length}</b> 筆修改</div>
@@ -575,7 +576,7 @@ function renderCases(){
         <td class="tdc">${cb(c,'cbPre')}</td><td class="tdc">${cb(c,'cbPost','cb-post')}</td>
         <td class="mono" style="color:var(--text3);font-size:10px">${i+1}</td>
         <td class="mono" style="font-size:11px">${c.saleDate||'<span style="color:var(--text3)">未填</span>'}</td>
-        <td class="mono" style="font-size:11px">${c.surgeryDate||'—'}</td>
+        <td class="mono" style="font-size:11px">${canFlag()?`<input type="date" class="sd-in" data-date="${c.id}" value="${c.surgeryDate||''}">`:(c.surgeryDate||'—')}</td>
         <td style="font-weight:500">${esc(c.name||'—')}</td>
         <td><code>${esc(c.code||'—')}</code></td>
         <td>${gradeBadge(c.grade)}</td>
@@ -812,7 +813,7 @@ function openCase(id){
       <div class="fg"><label>分院 <span class="req">*</span></label><select name="branch" ${dis}>${opt(BRANCHES,d.branch)}</select></div>
       <div class="fg"><label>諮詢師</label><input name="consultant" list="dl-consultant" value="${esc(d.consultant||'')}" ${dis}><datalist id="dl-consultant">${consultants.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div>
       <div class="fg"><label>銷售日</label><input type="date" name="saleDate" value="${d.saleDate||''}" ${dis}></div>
-      <div class="fg"><label>手術日</label><input type="date" name="surgeryDate" value="${d.surgeryDate||''}" ${dis}></div>
+      <div class="fg"><label>手術日</label><input type="date" name="surgeryDate" value="${d.surgeryDate||''}" ${fdis}></div>
       <div class="fg"><label>顧客姓名 <span class="req">*</span></label><input name="name" value="${esc(d.name||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
       <div class="fg"><label>顧客代碼 <span class="req">*</span></label><input name="code" value="${esc(d.code||'')}" placeholder="姓名、代碼擇一" ${dis}></div>
       <div class="fg"><label>授權等級</label><select name="grade" ${dis}>${opt(GRADES,d.grade||'','未填').replace(/>(全臉公開|匿名公開|院內公開|無折扣)</g,(m,g)=>`>${g}（$${fmt(GRADE_AMT[g])}）<`)}</select></div>
@@ -837,7 +838,7 @@ function openCase(id){
   if(flagOnly){
     root.querySelector('[data-save]').addEventListener('click',()=>{
       const f=new FormData(root.querySelector('#case-form'));
-      Object.assign(c,{status:String(f.get('status')||'進行中'),cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),
+      Object.assign(c,{surgeryDate:String(f.get('surgeryDate')||''),status:String(f.get('status')||'進行中'),cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),
         card:!!f.get('card'),note:String(f.get('note')||'').trim()});
       applyRules(c); recordEdit(c); ov.close(); render(); toast('✓ 已暫存，記得按「📤 匯出修改」');
     });
@@ -1196,9 +1197,17 @@ $('#content').addEventListener('click',async e=>{
     try{await persist([c]);if(changed)render();}catch(err){cb.checked=!cb.checked;c[f]=cb.checked;}
     return;
   }
-  if(e.target.closest('label'))return;
+  if(e.target.closest('label')||e.target.closest('[data-date]'))return;
   const row=e.target.closest('[data-open]');
   if(row)openCase(row.dataset.open);
+});
+// 手術日直接在清單上填寫
+$('#content').addEventListener('change',async e=>{
+  const inp=e.target.closest('[data-date]'); if(!inp||!canFlag())return;
+  const c=cases.find(x=>x.id===inp.dataset.date); if(!c)return;
+  const old=c.surgeryDate||''; c.surgeryDate=inp.value; c.updatedAt=Date.now();
+  if(!ADMIN){recordEdit(c);toast('✓ 手術日已暫存，記得按「📤 匯出修改」');return;}
+  try{await persist([c]);toast('✓ 手術日已儲存');}catch(err){c.surgeryDate=old;inp.value=old;}
 });
 // 唯讀模式下點勾選框不要打開案例
 $('#content').addEventListener('mousedown',e=>{if(e.target.closest('[data-flag]:disabled'))e.stopPropagation();});
@@ -1228,9 +1237,18 @@ function startSession(d){
       await DB.open();cases=await DB.allCases();
       const old=cases.filter(c=>OLD_GRADE[c.grade]);
       if(old.length){old.forEach(fixGrade);await persist(old);}
-      // 現有資料套用自動規則（術後→已完成、術前→櫃檯開卡）
+      // 一次性：還原之前規則自動勾的櫃檯開卡（術前／術後有勾的），之後開卡改為手動
+      let msg='';
+      if(!(await DB.getMeta('cardReset1'))){
+        const rs=cases.filter(c=>c.card&&(c.cbPre||c.cbPost));
+        rs.forEach(c=>{c.card=false;c.updatedAt=Date.now();});
+        if(rs.length){await persist(rs);msg=`已還原 ${rs.length} 筆自動勾選的櫃檯開卡。`;}
+        await DB.setMeta('cardReset1',true);
+      }
+      // 現有資料套用自動規則（術後→已完成）
       const ruled=cases.filter(applyRules);
-      if(ruled.length){await persist(ruled);toast(`已依規則更新 ${ruled.length} 筆（術後→已完成、術前／術後→櫃檯開卡），請記得發佈`);}
+      if(ruled.length){await persist(ruled);msg+=`已依規則更新 ${ruled.length} 筆（術後→已完成）。`;}
+      if(msg)toast(msg+'請記得發佈');
     }
     catch(e){notice('無法開啟本機儲存',`<p class="notice-sub">這個瀏覽器不允許儲存資料（可能是無痕模式），資料不會被保存。</p>`);}
     $('#app').hidden=false; renderHeader(); updateAdminLabel(); render();
