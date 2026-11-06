@@ -916,10 +916,23 @@ function openSurgBatch(){
       r.matches=cases.filter(c=>(c.name||'').replace(/\s/g,'')===key||(c.code||'').toUpperCase()===key.toUpperCase());
       // 同名多筆：優先選還沒填手術日、銷售日最近的那筆
       r.matches.sort((a,b)=>(!!a.surgeryDate-!!b.surgeryDate)||String(b.saleDate||'').localeCompare(String(a.saleDate||'')));
+      // 找不到：列出名字相近的（打錯字、同音字），預設不填，要自己選
+      if(!r.matches.length&&key.length>=2){
+        const sc=n=>{n=(n||'').replace(/\s/g,'');if(Math.abs(n.length-key.length)>1)return 0;
+          let s=0;for(let i=0;i<key.length;i++){if(n[i]===key[i])s+=1;else if(n.includes(key[i]))s+=.5;}return s;};
+        r.matches=cases.map(c=>({c,s:sc(c.name)})).filter(x=>x.s>=1)
+          .sort((a,b)=>b.s-a.s||(!!a.c.surgeryDate-!!b.c.surgeryDate)||String(b.c.saleDate||'').localeCompare(String(a.c.saleDate||'')))
+          .slice(0,6).map(x=>x.c);
+        r.fuzzy=r.matches.length>0;
+      }
     });
     root.querySelector('#sb-prev').innerHTML=rows.length?`<table class="case-table" style="width:100%"><thead><tr><th>貼上的內容</th><th>手術日</th><th>對應案例</th></tr></thead><tbody>${rows.map((r,i)=>{
       if(r.err)return `<tr><td>${esc(r.line)}</td><td colspan="2" style="color:var(--danger,#B00020)">✕ ${r.err}</td></tr>`;
       if(!r.matches.length)return `<tr><td>${esc(r.line)}</td><td>—</td><td style="color:var(--danger,#B00020)">✕ 找不到「${esc(r.name)}」</td></tr>`;
+      if(r.fuzzy){
+        const fo='<option value="-1" selected>（不要填這筆）</option>'+r.matches.map((c,j)=>`<option value="${j}">${esc(c.name)}｜${caseLbl(c)}</option>`).join('');
+        return `<tr><td>${esc(r.line)}</td><td class="mono">—</td><td><span style="color:#B8860B">⚠ 找不到「${esc(r.name)}」，是不是其中一位？</span><br><select data-sb="${i}" style="max-width:100%">${fo}</select></td></tr>`;
+      }
       const opts=r.matches.map((c,j)=>`<option value="${j}">${caseLbl(c)}</option>`).join('')+'<option value="-1">（不要填這筆）</option>';
       return `<tr><td>${esc(r.line)}</td><td class="mono">${surgDateFor(r,r.matches[0])}</td><td>${r.matches.length>1?`<span style="color:#B8860B">⚠ 同名 ${r.matches.length} 筆，請確認：</span><br>`:''}<select data-sb="${i}" style="max-width:100%">${opts}</select></td></tr>`;
     }).join('')}</tbody></table>`:'<p class="hint">沒有貼上任何內容</p>';
