@@ -100,7 +100,11 @@ code{font-family:var(--mono);font-size:11px;color:var(--text2)}
 .cb{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
 .cb-post{accent-color:var(--pink)}
 .cb:disabled{cursor:default;opacity:1}
-.sd-in{font:inherit;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:transparent;color:inherit;width:118px}
+.sd-in{font:inherit;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:1px 4px;background:transparent;color:var(--text3);width:118px;opacity:.55}
+.sd-in:hover,.sd-in:focus{opacity:1}
+.sd-in.sd-on,.sd-tag{opacity:1;font-weight:700;font-size:12px;color:#8A1C1C;background:#FDECEC;border:1px solid #E8A9A9;border-radius:4px}
+.sd-tag{display:inline-block;padding:2px 8px}
+th.th-sd{color:#8A1C1C}
 
 /* badges */
 .g{display:inline-block;text-align:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;border:1px solid transparent;white-space:nowrap}
@@ -572,13 +576,13 @@ function renderCases(){
 
   if(S.layout==='list'){
     $('#content').innerHTML=`<div class="table-wrap"><table class="case-table"><thead><tr>
-      <th class="thc">術前</th><th class="thc">術後</th><th>#</th><th>銷售日</th><th>手術日</th><th>顧客姓名</th><th>顧客代碼</th>
+      <th class="thc">術前</th><th class="thc">術後</th><th>#</th><th>銷售日</th><th class="th-sd">手術日</th><th>顧客姓名</th><th>顧客代碼</th>
       <th>授權等級</th><th class="thr">折讓金額</th><th>分院</th><th>諮詢師</th><th>狀態</th><th class="thc">櫃檯開卡</th>
       </tr></thead><tbody>${list.length?list.map((c,i)=>`<tr data-open="${c.id}" class="${c.status==='取消'?'is-cancel':''}">
         <td class="tdc">${cb(c,'cbPre')}</td><td class="tdc">${cb(c,'cbPost','cb-post')}</td>
         <td class="mono" style="color:var(--text3);font-size:10px">${i+1}</td>
         <td class="mono" style="font-size:11px">${c.saleDate||'<span style="color:var(--text3)">未填</span>'}</td>
-        <td class="mono" style="font-size:11px">${canFlag()?`<input type="date" class="sd-in" data-date="${c.id}" value="${c.surgeryDate||''}">`:(c.surgeryDate||'—')}</td>
+        <td class="mono" style="font-size:11px">${canFlag()?`<input type="date" class="sd-in ${c.surgeryDate?'sd-on':''}" data-date="${c.id}" value="${c.surgeryDate||''}">`:(c.surgeryDate?`<span class="sd-tag">${c.surgeryDate}</span>`:'—')}</td>
         <td style="font-weight:500">${esc(c.name||'—')}</td>
         <td><code>${esc(c.code||'—')}</code></td>
         <td>${gradeBadge(c.grade)}</td>
@@ -596,7 +600,7 @@ function renderCases(){
         <div class="dc-top"><span class="dc-name">${esc(c.name||c.code||'—')}</span>${gradeBadge(c.grade)}</div>
         <div class="dc-meta">
           <code>${esc(c.code||'—')}</code>　諮詢師 ${esc(c.consultant||'—')}<br>
-          銷售 <span class="mono">${c.saleDate||'未填'}</span>　手術 <span class="mono">${c.surgeryDate||'—'}</span><br>
+          銷售 <span class="mono">${c.saleDate||'未填'}</span>　手術 ${c.surgeryDate?`<span class="mono sd-tag">${c.surgeryDate}</span>`:'<span class="mono">—</span>'}<br>
           折讓 <span class="mono">$${fmt(c.discount)}</span>
         </div>
         <div class="dc-flags">${flag(c.cbPre,'術前')}${flag(c.cbPost,'術後','post')}</div>
@@ -1397,6 +1401,7 @@ $('#content').addEventListener('change',async e=>{
   const inp=e.target.closest('[data-date]'); if(!inp||!canFlag())return;
   const c=cases.find(x=>x.id===inp.dataset.date); if(!c)return;
   const old=c.surgeryDate||''; c.surgeryDate=inp.value; c.updatedAt=Date.now();
+  inp.classList.toggle('sd-on',!!inp.value);
   if(!ADMIN){recordEdit(c);toast('✓ 手術日已暫存，記得按「📤 匯出修改」');return;}
   try{await persist([c]);toast('✓ 手術日已儲存');}catch(err){c.surgeryDate=old;inp.value=old;}
 });
