@@ -502,6 +502,7 @@ function renderHeader(){
     h.push('<button class="btn" id="btn-pw">🔑 設定帳號密碼</button>');
     h.push('<button class="btn" id="btn-import">📥 匯入報表</button>');
     h.push('<button class="btn" id="btn-surg">📅 批次填手術日</button>');
+    h.push('<button class="btn" id="btn-photo">📸 批次勾術前術後</button>');
     h.push('<button class="btn btn-primary" id="btn-add">＋ 新增案例</button>');
     h.push('<button class="btn btn-pub" id="btn-publish">🌐 發佈到網站</button>');
     h.push('<button class="btn btn-danger" id="btn-clear" title="刪除這台電腦裡的全部案例">🗑 清空全部資料</button>');
@@ -955,6 +956,85 @@ function openSurgBatch(){
   });
 }
 
+// ══════════════════════════════════════════
+//  批次勾術前／術後：貼上拍攝通知，例如「11/2(一)巨蛋美加 眼袋術前 蕭美蓉＋羅桂香」
+// ══════════════════════════════════════════
+const CJK='[\\u4e00-\\u9fff]';
+function nameScore(n,key){
+  n=(n||'').replace(/\s/g,''); if(!n||Math.abs(n.length-key.length)>1)return 0;
+  let s=0;for(let i=0;i<key.length;i++){if(n[i]===key[i])s+=1;else if(n.includes(key[i]))s+=.5;}return s;
+}
+const caseSort=(a,b)=>String(b.saleDate||'').localeCompare(String(a.saleDate||''));
+function parsePhotoLines(text){
+  const out=[];
+  text.split(/\r?\n/).forEach(raw=>{
+    const line=raw.trim(); if(!line)return;
+    const pre=line.includes('術前'), post=line.includes('術後');
+    if(!pre&&!post)return;                                   // 沒寫術前／術後的行略過
+    const flag=post&&!pre?'cbPost':pre&&!post?'cbPre':(line.lastIndexOf('術後')>line.lastIndexOf('術前')?'cbPost':'cbPre');
+    const br=BRANCHES.find(b=>line.includes(b))||'';
+    const pool=cases.filter(c=>!br||c.branch===br);
+    const flat=line.replace(/\s/g,'');
+    // 1. 這行裡直接出現的顧客姓名（或代碼）
+    let names=[...new Set(pool.map(c=>(c.name||'').replace(/\s/g,'')).filter(n=>n.length>=2&&flat.includes(n)))];
+    names=names.filter(n=>!names.some(m=>m!==n&&m.includes(n)));   // 去掉被較長名字包含的
+    const groups=names.map(n=>({key:n,matches:pool.filter(c=>(c.name||'').replace(/\s/g,'')===n).sort(caseSort)}));
+    pool.forEach(c=>{if(c.code&&c.code.length>=5&&flat.toUpperCase().includes(c.code.toUpperCase())&&!groups.some(g=>g.matches.includes(c)))groups.push({key:c.code,matches:[c]});});
+    // 2. 找不到時：從「客名」「術前／術後」後面、「客…拍攝」中間抓名字，列出相近的
+    if(!groups.length){
+      const toks=new Set(), add=s=>s&&s.split(/[＋+、,，及和]/).forEach(t=>{t=t.trim();if(t.length>=2&&t.length<=4)toks.add(t);});
+      [new RegExp(`客名[:：]?(${CJK}{2,4})`),new RegExp(`術[前後](?:需拍攝)?[:：]?((?:${CJK}{2,4}[＋+、,，及和]?)+)`),new RegExp(`客(${CJK}{2,4}?)拍攝`)]
+        .forEach(re=>{const m=flat.match(re);if(m)add(m[1]);});
+      toks.forEach(t=>{
+        const fz=pool.map(c=>({c,s:nameScore(c.name,t)})).filter(x=>x.s>=1).sort((a,b)=>b.s-a.s||caseSort(a.c,b.c)).slice(0,6).map(x=>x.c);
+        groups.push({key:t,matches:fz,fuzzy:true});
+      });
+    }
+    out.push({line,flag,br,groups});
+  });
+  return out;
+}
+function openPhotoBatch(){
+  const ov=openOverlay(`<div class="modal" style="max-width:720px"><div class="modal-h"><span class="modal-t">📸 批次勾術前／術後</span><button class="btn btn-icon" data-close>✕</button></div>
+  <div class="modal-b">
+    <p class="hint">把拍攝通知整段貼進來，一行一則。系統會找出<b>分院、術前或術後、顧客姓名</b>，例如：<br><code>11/2(一)巨蛋美加 眼袋術前 蕭美蓉＋羅桂香</code><br><code>11/23 1430@北屯美加有一眼袋術前需拍攝，客名林家億</code></p>
+    <textarea id="pb-text" style="width:100%;min-height:140px;font:inherit"></textarea>
+    <div id="pb-prev" style="margin-top:10px"></div>
+  </div>
+  <div class="modal-f"><span class="grow"></span><button class="btn" data-close>取消</button><button class="btn" id="pb-check">① 檢查</button><button class="btn btn-primary" id="pb-ok" disabled>② 確認勾選</button></div></div>`);
+  const root=ov.el; let rows=[];
+  const lbl=c=>`${esc(c.name||'')}｜${c.branch}｜銷售 ${c.saleDate||'未填'}｜${esc(c.code||'')}${c.cbPre?'｜已勾術前':''}${c.cbPost?'｜已勾術後':''}`;
+  const red=s=>`<span style="color:var(--danger,#B00020)">${s}</span>`, warn=s=>`<span style="color:#B8860B">${s}</span>`;
+  root.querySelector('#pb-check').addEventListener('click',()=>{
+    rows=parsePhotoLines(root.querySelector('#pb-text').value);
+    let k=0;
+    const body=rows.map(r=>{
+      const act=r.flag==='cbPost'?'<b style="color:var(--pink,#C2185B)">術後</b>':'<b>術前</b>';
+      if(!r.groups.length)return `<tr><td>${esc(r.line)}</td><td>${act}</td><td>${red(`✕ 找不到顧客${r.br?`（${r.br}）`:''}，請手動勾`)}</td></tr>`;
+      return r.groups.map((g,gi)=>{
+        g.idx=k++;
+        let cell;
+        if(!g.matches.length)cell=red(`✕ 找不到「${esc(g.key)}」`);
+        else if(g.fuzzy)cell=warn(`⚠ 找不到「${esc(g.key)}」，是不是其中一位？`)+`<br><select data-pb="${g.idx}" style="max-width:100%"><option value="-1" selected>（不要勾）</option>${g.matches.map((c,j)=>`<option value="${j}">${lbl(c)}</option>`).join('')}</select>`;
+        else cell=(g.matches.length>1?warn(`⚠ 「${esc(g.key)}」有 ${g.matches.length} 筆，請確認：`)+'<br>':'')+`<select data-pb="${g.idx}" style="max-width:100%">${g.matches.map((c,j)=>`<option value="${j}">${lbl(c)}</option>`).join('')}<option value="-1">（不要勾）</option></select>`;
+        return `<tr>${gi===0?`<td rowspan="${r.groups.length}">${esc(r.line)}</td><td rowspan="${r.groups.length}">${act}</td>`:''}<td>${cell}</td></tr>`;
+      }).join('');
+    }).join('');
+    root.querySelector('#pb-prev').innerHTML=rows.length?`<table class="case-table" style="width:100%"><thead><tr><th>貼上的內容</th><th>要勾</th><th>對應案例</th></tr></thead><tbody>${body}</tbody></table>`:'<p class="hint">沒有找到寫「術前」或「術後」的行</p>';
+    root.querySelector('#pb-ok').disabled=!root.querySelector('[data-pb]');
+  });
+  root.querySelector('#pb-ok').addEventListener('click',async()=>{
+    const done=new Map();
+    rows.forEach(r=>r.groups.forEach(g=>{
+      const s=root.querySelector(`[data-pb="${g.idx}"]`), c=s&&g.matches[+s.value]; if(!c)return;
+      c[r.flag]=true; applyRules(c); c.updatedAt=Date.now(); done.set(c.id,c);
+    }));
+    if(!done.size){toast('沒有要勾的案例');return;}
+    await persist([...done.values()]); ov.close(); render();
+    toast(`✓ 已勾選 ${done.size} 筆，記得按「🌐 發佈到網站」`);
+  });
+}
+
 async function clearAll(){
   if(!cases.length){toast('目前沒有資料');return;}
   if(!confirm(`確定要刪除這台電腦裡的全部 ${cases.length} 筆案例嗎？\n\n刪除後無法復原。帳號密碼設定會保留。\n（網站上的資料要等下次「發佈到網站」才會更新）`))return;
@@ -1257,6 +1337,7 @@ $('#hright').addEventListener('click',e=>{
   else if(b.id==='btn-publish')publish();
   else if(b.id==='btn-clear')clearAll();
   else if(b.id==='btn-surg')openSurgBatch();
+  else if(b.id==='btn-photo')openPhotoBatch();
   else if(b.id==='btn-edits')exportEdits();
   else if(b.id==='btn-logout'){try{sessionStorage.removeItem('koubei_session');}catch(err){}location.reload();}
 });
