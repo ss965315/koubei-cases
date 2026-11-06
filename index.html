@@ -991,7 +991,9 @@ function parsePhotoLines(text){
     // 1. 這行裡直接出現的顧客姓名（或代碼）
     let names=[...new Set(pool.map(c=>(c.name||'').replace(/\s/g,'')).filter(n=>n.length>=2&&flat.includes(n)))];
     names=names.filter(n=>!names.some(m=>m!==n&&m.includes(n)));   // 去掉被較長名字包含的
-    const groups=names.map(n=>({key:n,matches:pool.filter(c=>(c.name||'').replace(/\s/g,'')===n).sort(caseSort)}));
+    // 同名多筆時，這行有寫銷售日（例如 2026-01-31）的那筆排第一
+    const hasSale=c=>c.saleDate&&flat.includes(c.saleDate)?0:1;
+    const groups=names.map(n=>({key:n,matches:pool.filter(c=>(c.name||'').replace(/\s/g,'')===n).sort((a,b)=>hasSale(a)-hasSale(b)||caseSort(a,b))}));
     pool.forEach(c=>{if(c.code&&c.code.length>=5&&flat.toUpperCase().includes(c.code.toUpperCase())&&!groups.some(g=>g.matches.includes(c)))groups.push({key:c.code,matches:[c]});});
     // 2. 找不到時：從「客名」「術前／術後」後面、「客…拍攝」中間抓名字，列出相近的
     if(!groups.length){
