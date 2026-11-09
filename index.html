@@ -1214,7 +1214,7 @@ async function importFiles(files){
   const index=new Map(cases.map(c=>[caseKey(c),c]));
   const created=new Set(), touched=new Map();
   let added=0,updated=0,skipped=0,sheetsOk=0;
-  const skippedSheets=[], perBranch={}, perYear={};
+  const skippedSheets=[], perBranch={}, perYear={}, otherBr={};
   try{
     for(const file of files){
       const wb=await readWorkbook(file);
@@ -1243,7 +1243,10 @@ async function importFiles(files){
           const cons=[...new Set(String(g('consultant')).split(/\r?\n|\\n|、/).map(x=>x.split('-')[0].trim())
             .filter(x=>x&&!/[A-Za-z]{2,}\d{2,}/.test(x)&&!x.includes('行銷')))].join('、');
           const gradeRaw=String(g('grade'));
-          const rec={name,code,branch:toBranch(g('branch'))||sheetBranch||fallback,saleDate:toDate(g('saleDate')),
+          // 有寫店碼、但不是我們的 6 間（例如 M004 逢甲）→ 略過，不要塞到目前畫面的分院
+          const brRaw=String(g('branch')).trim();
+          if(brRaw&&!toBranch(brRaw)){otherBr[brRaw]=(otherBr[brRaw]||0)+1;continue;}
+          const rec={name,code,branch:toBranch(brRaw)||sheetBranch||fallback,saleDate:toDate(g('saleDate')),
             surgeryDate:toDate(g('surgeryDate')),grade:toGrade(gradeRaw),consultant:cons,
             status:toStatus(g('status')),note:String(g('note')).trim()};
           const disc=toInt(g('discount'));
@@ -1283,6 +1286,7 @@ async function importFiles(files){
   notice('📥 匯入完成',`<div class="notice-list">新增 <b>${added}</b> 筆　更新 <b>${updated}</b> 筆　略過 <b>${skipped}</b> 列</div>
     <div class="notice-sub">讀取 ${sheetsOk} 個工作表${top?`，已切換到匯入最多筆的分院「${top[0]}」`:''}。
     ${skipped?'<br>略過的列：沒有顧客姓名也沒有顧客代碼。':''}
+    ${Object.keys(otherBr).length?`<br>不是 6 間分院而略過：${Object.entries(otherBr).map(([k,n])=>`${esc(k)}（${n} 列）`).join('、')}`:''}
     ${skippedSheets.length?`<br>找不到「顧客姓名／顧客代碼」標題而略過的工作表：${skippedSheets.map(esc).join('、')}`:''}
     <br><b>確認沒問題後，請按「🌐 發佈到網站」。</b></div>`);
 }
