@@ -1187,7 +1187,8 @@ function toDate(v){
   return m?mk(m[1],m[2],m[3]):'';
 }
 const BRANCH_CODES={M001:'仁愛',M002:'桃園',M003:'向上',M005:'巨蛋',M006:'竹北',M007:'北屯'};
-const BRANCH_ALIAS={崇德:'北屯'};
+// 報表上的店名：M001台北仁愛、M002桃園中正、M003台中向上、M005高雄巨蛋、M006新竹光明、M007台中崇德（M004台中逢甲不收）
+const BRANCH_ALIAS={崇德:'北屯',光明:'竹北',新竹:'竹北',中正:'桃園'};
 const toBranch=s=>{const t=String(s||'');return BRANCHES.find(b=>t.includes(b))||(Object.entries(BRANCH_ALIAS).find(([k])=>t.includes(k))||[])[1]||(Object.entries(BRANCH_CODES).find(([k])=>t.toUpperCase().includes(k))||[])[1]||'';};
 const toGrade=s=>{const t=String(s||'').trim();
   if(t.includes('全臉'))return '全臉公開'; if(t.includes('匿名'))return '匿名公開';
