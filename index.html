@@ -353,7 +353,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const canEdit=()=>ADMIN;
 // 總部帳號：可在網站上勾術前、術後、開卡、改狀態與備註（先存在這台電腦，再匯出給管理者）
 const canFlag=()=>ADMIN||(!!SESSION&&!SESSION.branch);
-const FLAG_FIELDS=['status','cbPre','cbPost','card','note','surgeryDate'];
+const FLAG_FIELDS=['status','cbPre','cbPost','card','note','surgeryDate','cardDate'];
 // 自動規則：術後拍攝完成 → 狀態「已完成」（櫃檯開卡一律手動勾）。回傳是否有變動
 function applyRules(c){
   const before=c.status;
@@ -376,7 +376,7 @@ function loadEdits(){
 }
 function recordEdit(c){
   edits[c.id]={branch:c.branch,saleDate:c.saleDate||'',name:c.name||'',code:c.code||'',
-    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',surgeryDate:c.surgeryDate||'',at:Date.now()};
+    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',surgeryDate:c.surgeryDate||'',cardDate:c.cardDate||'',at:Date.now()};
   saveEdits(); updateEditBtn();
 }
 function updateEditBtn(){
@@ -387,8 +387,8 @@ function updateEditBtn(){
 function exportEdits(){
   const list=Object.values(edits); if(!list.length){toast('目前沒有修改');return;}
   const yn=v=>v?'是':'否';
-  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','手術日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','備註'],
-    ...list.map(e=>[e.branch,e.saleDate,e.surgeryDate||'',e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.note])]);
+  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','手術日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','開卡日','備註'],
+    ...list.map(e=>[e.branch,e.saleDate,e.surgeryDate||'',e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.cardDate||'',e.note])]);
   ws['!cols']=[6,11,11,10,12,10,6,6,8,30].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'總部修改');
   XLSX.writeFile(wb,`口碑案例_總部修改_${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
@@ -507,6 +507,7 @@ function renderHeader(){
     h.push('<button class="btn" id="btn-import">📥 匯入報表</button>');
     h.push('<button class="btn" id="btn-surg">📅 批次填手術日</button>');
     h.push('<button class="btn" id="btn-photo">📸 批次勾術前術後</button>');
+    h.push('<button class="btn" id="btn-carddate">💳 批次填開卡日</button>');
     h.push('<button class="btn btn-primary" id="btn-add">＋ 新增案例</button>');
     h.push('<button class="btn btn-pub" id="btn-publish">🌐 發佈到網站</button>');
     h.push('<button class="btn btn-danger" id="btn-clear" title="刪除這台電腦裡的全部案例">🗑 清空全部資料</button>');
@@ -590,7 +591,7 @@ function renderCases(){
         <td style="font-size:11px;color:var(--text2)">${c.branch}</td>
         <td style="font-size:11px">${esc(c.consultant||'—')}</td>
         <td>${statusBadge(c.status)}</td>
-        <td class="tdc">${cb(c,'card')}</td>
+        <td class="tdc">${cb(c,'card')}${c.cardDate?`<div class="mono" style="font-size:10px;color:var(--text2)">${c.cardDate.slice(5).replace('-','/')}</div>`:''}</td>
       </tr>`).join(''):`<tr><td colspan="13"><div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div></td></tr>`}
       </tbody></table></div>`;
   } else {
@@ -605,7 +606,7 @@ function renderCases(){
         </div>
         <div class="dc-flags">${flag(c.cbPre,'術前')}${flag(c.cbPost,'術後','post')}</div>
       </div>
-      <div class="dc-foot">${statusBadge(c.status)}<label><input type="checkbox" class="cb" data-flag="card" data-id="${c.id}" ${c.card?'checked':''} ${ro}> 櫃檯開卡</label></div>
+      <div class="dc-foot">${statusBadge(c.status)}<label><input type="checkbox" class="cb" data-flag="card" data-id="${c.id}" ${c.card?'checked':''} ${ro}> 櫃檯開卡${c.cardDate?` <span class="mono" style="font-size:10px">${c.cardDate.slice(5).replace('-','/')}</span>`:''}</label></div>
     </div>`).join('')}</div>`:`<div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div>`;
   }
 }
@@ -828,6 +829,7 @@ function openCase(id){
     </div>
     <div class="sec-lbl">素材與開卡</div>
     <div class="checks">${ck('cbPre','術前')}${ck('cbPost','術後')}${ck('card','櫃檯已開卡')}</div>
+    <div class="fg"><label>開卡日</label><input type="date" name="cardDate" value="${d.cardDate||''}" ${fdis}></div>
     <div class="fg"><label>備註</label><textarea name="note" ${fdis}>${esc(d.note||'')}</textarea></div>
     ${flagOnly?'<p class="hint">修改會先存在這台電腦。改完請按上方「📤 匯出修改」，把檔案交給管理者匯入發佈。</p>':''}
   </form></div>
@@ -845,7 +847,7 @@ function openCase(id){
     root.querySelector('[data-save]').addEventListener('click',()=>{
       const f=new FormData(root.querySelector('#case-form'));
       Object.assign(c,{surgeryDate:String(f.get('surgeryDate')||''),status:String(f.get('status')||'進行中'),cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),
-        card:!!f.get('card'),note:String(f.get('note')||'').trim()});
+        card:!!f.get('card')||!!f.get('cardDate'),cardDate:String(f.get('cardDate')||''),note:String(f.get('note')||'').trim()});
       applyRules(c); recordEdit(c); ov.close(); render(); toast('✓ 已暫存，記得按「📤 匯出修改」');
     });
     return;
@@ -863,7 +865,7 @@ function openCase(id){
     const v=k=>String(f.get(k)||'').trim();
     const rec={branch:v('branch'),consultant:v('consultant'),saleDate:v('saleDate'),surgeryDate:v('surgeryDate'),
       name:v('name'),code:v('code'),grade:v('grade'),discount:Math.max(0,Math.round(+v('discount')||0)),
-      status:v('status')||'進行中',cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),card:!!f.get('card'),note:v('note')};
+      status:v('status')||'進行中',cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),card:!!f.get('card')||!!v('cardDate'),cardDate:v('cardDate'),note:v('note')};
     if(!rec.name&&!rec.code){toast('顧客姓名與顧客代碼至少填一個');return;}
     const k=caseKey(rec), dup=cases.find(x=>x.id!==(c&&c.id)&&caseKey(x)===k);
     if(dup&&!confirm('已經有一筆「分院＋顧客＋銷售日」相同的案例，仍要儲存嗎？'))return;
@@ -897,23 +899,28 @@ function parseSurgLines(text){
   return out;
 }
 // 沒寫年份時：選不早於銷售日、且最接近今天的年份
-function surgDateFor(r,c){
+// past=true（開卡日，已經發生的事）：選不晚於今天的最近一年
+function surgDateFor(r,c,past){
   const mk=y=>`${y}-${pad(r.mo)}-${pad(r.d)}`;
   if(r.y)return mk(r.y);
+  const today=`${CUR_Y}-${pad(CUR_M)}-${pad(NOW.getDate())}`;
   const ys=[CUR_Y-1,CUR_Y,CUR_Y+1].filter(y=>!c||!c.saleDate||mk(y)>=c.saleDate);
-  const today=`${CUR_Y}-${pad(CUR_M)}-${pad(NOW.getDate())}`, dist=s=>Math.abs(new Date(s)-new Date(today));
+  if(past){const p=ys.filter(y=>mk(y)<=today);if(p.length)return mk(Math.max(...p));}
+  const dist=s=>Math.abs(new Date(s)-new Date(today));
   return mk((ys.length?ys:[CUR_Y]).sort((a,b)=>dist(mk(a))-dist(mk(b)))[0]);
 }
-function openSurgBatch(){
-  const ov=openOverlay(`<div class="modal" style="max-width:640px"><div class="modal-h"><span class="modal-t">📅 批次填手術日</span><button class="btn btn-icon" data-close>✕</button></div>
+// mode：'surgeryDate' 填手術日；'cardDate' 填開卡日（同時勾櫃檯開卡）
+function openSurgBatch(F='surgeryDate'){
+  const CARD=F==='cardDate', WHAT=CARD?'開卡日':'手術日';
+  const ov=openOverlay(`<div class="modal" style="max-width:640px"><div class="modal-h"><span class="modal-t">${CARD?'💳 批次填開卡日':'📅 批次填手術日'}</span><button class="btn btn-icon" data-close>✕</button></div>
   <div class="modal-b">
-    <p class="hint">一行一位：<b>顧客姓名（或顧客代碼）＋日期</b>，例如：<br><code>王小明 11/10</code><br><code>陳美美 11/12</code></p>
-    <textarea id="sb-text" style="width:100%;min-height:140px;font:inherit" placeholder="王小明 11/10&#10;陳美美 11/12"></textarea>
+    <p class="hint">一行一位：<b>顧客姓名（或顧客代碼）＋日期</b>，例如：<br>${CARD?'<code>呂永欽6/23已開～</code><br><code>涂瑛琪4/28已開～</code><br>確認後會勾「櫃檯開卡」並填開卡日。':'<code>王小明 11/10</code><br><code>陳美美 11/12</code>'}</p>
+    <textarea id="sb-text" style="width:100%;min-height:140px;font:inherit" placeholder="${CARD?'呂永欽6/23已開～':'王小明 11/10&#10;陳美美 11/12'}"></textarea>
     <div id="sb-prev" style="margin-top:10px"></div>
   </div>
   <div class="modal-f"><span class="grow"></span><button class="btn" data-close>取消</button><button class="btn" id="sb-check">① 檢查</button><button class="btn btn-primary" id="sb-ok" disabled>② 確認填入</button></div></div>`);
   const root=ov.el; let rows=[];
-  const caseLbl=c=>`${c.branch}｜銷售 ${c.saleDate||'未填'}｜${esc(c.code||'')}${c.surgeryDate?`｜目前手術日 ${c.surgeryDate}`:''}`;
+  const caseLbl=c=>`${esc(c.name||'')}｜${c.branch}｜銷售 ${c.saleDate||'未填'}｜${esc(c.code||'')}${c[F]?`｜目前${WHAT} ${c[F]}`:''}`;
   root.querySelector('#sb-check').addEventListener('click',()=>{
     rows=parseSurgLines(root.querySelector('#sb-text').value);
     const used=new Set();
@@ -925,32 +932,34 @@ function openSurgBatch(){
       r.name=key;
       const pool=cases.filter(c=>!br||c.branch===br);
       r.matches=pool.filter(c=>(c.name||'').replace(/\s/g,'')===key||(c.code||'').toUpperCase()===key.toUpperCase());
-      // 同名多筆：優先選這次還沒被前面行選到、還沒填手術日、銷售日最近的那筆
-      r.matches.sort((a,b)=>(used.has(a.id)-used.has(b.id))||(!!a.surgeryDate-!!b.surgeryDate)||String(b.saleDate||'').localeCompare(String(a.saleDate||'')));
+      // 名字有括號別名，例如「王曉竺（王艷珍）」：寫「王曉竺」也找得到
+      if(!r.matches.length&&key.length>=2)r.matches=pool.filter(c=>(c.name||'').replace(/\s/g,'').includes(key));
+      // 同名多筆：優先選這次還沒被前面行選到、還沒填過、銷售日最近的那筆
+      r.matches.sort((a,b)=>(used.has(a.id)-used.has(b.id))||(!!a[F]-!!b[F])||String(b.saleDate||'').localeCompare(String(a.saleDate||'')));
       if(r.matches[0])used.add(r.matches[0].id);
       // 找不到：列出名字相近的（打錯字、同音字），預設不填，要自己選
       if(!r.matches.length&&key.length>=2){
         const sc=n=>{n=(n||'').replace(/\s/g,'');if(Math.abs(n.length-key.length)>1)return 0;
           let s=0;for(let i=0;i<key.length;i++){if(n[i]===key[i])s+=1;else if(n.includes(key[i]))s+=.5;}return s;};
         r.matches=pool.map(c=>({c,s:sc(c.name)})).filter(x=>x.s>=1)
-          .sort((a,b)=>b.s-a.s||(!!a.c.surgeryDate-!!b.c.surgeryDate)||String(b.c.saleDate||'').localeCompare(String(a.c.saleDate||'')))
+          .sort((a,b)=>b.s-a.s||(!!a.c[F]-!!b.c[F])||String(b.c.saleDate||'').localeCompare(String(a.c.saleDate||'')))
           .slice(0,6).map(x=>x.c);
         r.fuzzy=r.matches.length>0;
       }
     });
-    root.querySelector('#sb-prev').innerHTML=rows.length?`<table class="case-table" style="width:100%"><thead><tr><th>貼上的內容</th><th>手術日</th><th>對應案例</th></tr></thead><tbody>${rows.map((r,i)=>{
+    root.querySelector('#sb-prev').innerHTML=rows.length?`<table class="case-table" style="width:100%"><thead><tr><th>貼上的內容</th><th>${WHAT}</th><th>對應案例</th></tr></thead><tbody>${rows.map((r,i)=>{
       if(r.err)return `<tr><td>${esc(r.line)}</td><td colspan="2" style="color:var(--danger,#B00020)">✕ ${r.err}</td></tr>`;
       if(!r.matches.length)return `<tr><td>${esc(r.line)}</td><td>—</td><td style="color:var(--danger,#B00020)">✕ 找不到「${esc(r.name)}」</td></tr>`;
       if(r.fuzzy){
-        const fo='<option value="-1" selected>（不要填這筆）</option>'+r.matches.map((c,j)=>`<option value="${j}">${esc(c.name)}｜${caseLbl(c)}</option>`).join('');
+        const fo='<option value="-1" selected>（不要填這筆）</option>'+r.matches.map((c,j)=>`<option value="${j}">${caseLbl(c)}</option>`).join('');
         return `<tr><td>${esc(r.line)}</td><td class="mono">—</td><td><span style="color:#B8860B">⚠ 找不到「${esc(r.name)}」，是不是其中一位？</span><br><select data-sb="${i}" style="max-width:100%">${fo}</select></td></tr>`;
       }
       const opts=r.matches.map((c,j)=>`<option value="${j}">${caseLbl(c)}</option>`).join('')+'<option value="-1">（不要填這筆）</option>';
-      return `<tr><td>${esc(r.line)}</td><td class="mono">${surgDateFor(r,r.matches[0])}</td><td>${r.matches.length>1?`<span style="color:#B8860B">⚠ 同名 ${r.matches.length} 筆，請確認：</span><br>`:''}<select data-sb="${i}" style="max-width:100%">${opts}</select></td></tr>`;
+      return `<tr><td>${esc(r.line)}</td><td class="mono">${surgDateFor(r,r.matches[0],CARD)}</td><td>${r.matches.length>1?`<span style="color:#B8860B">⚠ 同名 ${r.matches.length} 筆，請確認：</span><br>`:''}<select data-sb="${i}" style="max-width:100%">${opts}</select></td></tr>`;
     }).join('')}</tbody></table>`:'<p class="hint">沒有貼上任何內容</p>';
     root.querySelectorAll('[data-sb]').forEach(s=>s.addEventListener('change',()=>{
       const r=rows[+s.dataset.sb], c=r.matches[+s.value];
-      s.closest('tr').children[1].textContent=c?surgDateFor(r,c):'—';
+      s.closest('tr').children[1].textContent=c?surgDateFor(r,c,CARD):'—';
     }));
     root.querySelector('#sb-ok').disabled=!rows.some(r=>r.matches&&r.matches.length);
   });
@@ -958,11 +967,11 @@ function openSurgBatch(){
     const done=[];
     root.querySelectorAll('[data-sb]').forEach(s=>{
       const r=rows[+s.dataset.sb], c=r.matches[+s.value]; if(!c)return;
-      c.surgeryDate=surgDateFor(r,c); c.updatedAt=Date.now(); done.push(c);
+      c[F]=surgDateFor(r,c,CARD); if(CARD)c.card=true; c.updatedAt=Date.now(); done.push(c);
     });
     if(!done.length){toast('沒有要填的案例');return;}
     await persist(done); ov.close(); render();
-    toast(`✓ 已填入 ${done.length} 筆手術日，記得按「🌐 發佈到網站」`);
+    toast(`✓ 已填入 ${done.length} 筆${WHAT}${CARD?'（並勾櫃檯開卡）':''}，記得按「🌐 發佈到網站」`);
   });
 }
 
@@ -1120,7 +1129,7 @@ async function publish(){
   if(missing.length){notice('還不能發佈',`<p class="notice-sub">這些帳號還沒設定密碼：<b>${missing.join('、')}</b><br>請先按「🔑 設定帳號密碼」。</p>`);return;}
   const updatedAt=new Date().toISOString();
   const strip=c=>({id:c.id,branch:c.branch,saleDate:c.saleDate||'',surgeryDate:c.surgeryDate||'',name:c.name||'',code:c.code||'',
-    grade:c.grade||'',discount:c.discount||0,consultant:c.consultant||'',status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||''});
+    grade:c.grade||'',discount:c.discount||0,consultant:c.consultant||'',status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,cardDate:c.cardDate||'',note:c.note||''});
   const anon=cases.map(c=>({branch:c.branch,saleDate:c.saleDate||'',grade:c.grade||'',discount:c.discount||0,
     consultant:c.consultant||'',status:c.status||'',card:!!c.card,cbPre:!!c.cbPre,cbPost:!!c.cbPost}));
   const out={v:1,iter:ITER,updatedAt,accounts:{}};
@@ -1151,6 +1160,7 @@ const FIELD_KEYS=[
   ['branch',['分店碼','店碼','分院','院區','門市','分店','診所']],
   ['consultant',['諮詢師','諮詢','銷售業務','業務','顧問']],
   ['status',['狀態']],
+  ['cardDate',['開卡日']],
   ['card',['開卡','櫃檯']],
   ['cbPre',['術前']],
   ['cbPost',['術後']],
@@ -1249,7 +1259,7 @@ async function importFiles(files){
           const brRaw=String(g('branch')).trim();
           if(brRaw&&!toBranch(brRaw)){otherBr[brRaw]=(otherBr[brRaw]||0)+1;continue;}
           const rec={name,code,branch:toBranch(brRaw)||sheetBranch||fallback,saleDate:toDate(g('saleDate')),
-            surgeryDate:toDate(g('surgeryDate')),grade:toGrade(gradeRaw),consultant:cons,
+            surgeryDate:toDate(g('surgeryDate')),cardDate:toDate(g('cardDate')),grade:toGrade(gradeRaw),consultant:cons,
             status:toStatus(g('status')),note:String(g('note')).trim()};
           const disc=toInt(g('discount'));
           if(disc!=null)rec.discount=disc;
@@ -1297,9 +1307,9 @@ async function importFiles(files){
 //  匯出 XLSX / 截圖
 // ══════════════════════════════════════════
 function doExport(){
-  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','術前','術後','櫃檯開卡','備註'];
+  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','術前','術後','櫃檯開卡','開卡日','備註'];
   const toRow=c=>[c.branch,c.saleDate||'',c.surgeryDate||'',c.name||'',c.code||'',c.grade||'',c.discount||0,c.consultant||'',
-    c.status||'',c.cbPre?'✓':'',c.cbPost?'✓':'',c.card?'是':'否',c.note||''];
+    c.status||'',c.cbPre?'✓':'',c.cbPost?'✓':'',c.card?'是':'否',c.cardDate||'',c.note||''];
   const sheet=list=>{const ws=XLSX.utils.aoa_to_sheet([hdr,...list.map(toRow)]);
     ws['!cols']=[6,11,11,10,12,8,10,10,10,6,6,8,30].map(w=>({wch:w}));return ws;};
   const all=sortCases([...cases]).sort((a,b)=>BRANCHES.indexOf(a.branch)-BRANCHES.indexOf(b.branch));
@@ -1373,6 +1383,7 @@ $('#hright').addEventListener('click',e=>{
   else if(b.id==='btn-publish')publish();
   else if(b.id==='btn-clear')clearAll();
   else if(b.id==='btn-surg')openSurgBatch();
+  else if(b.id==='btn-carddate')openSurgBatch('cardDate');
   else if(b.id==='btn-photo')openPhotoBatch();
   else if(b.id==='btn-edits')exportEdits();
   else if(b.id==='btn-logout'){try{sessionStorage.removeItem('koubei_session');}catch(err){}location.reload();}
