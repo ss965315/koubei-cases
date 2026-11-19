@@ -353,7 +353,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const canEdit=()=>ADMIN;
 // 總部帳號：可在網站上勾術前、術後、開卡、改狀態與備註（先存在這台電腦，再匯出給管理者）
 const canFlag=()=>ADMIN||(!!SESSION&&!SESSION.branch);
-const FLAG_FIELDS=['status','cbPre','cbPost','card','note','surgeryDate','cardDate'];
+const FLAG_FIELDS=['status','cbPre','cbPost','card','note','surgeryDate','cardDate','cbSocial','cbWeb'];
 // 自動規則：術後拍攝完成 → 狀態「已完成」（櫃檯開卡一律手動勾）。回傳是否有變動
 function applyRules(c){
   const before=c.status;
@@ -376,7 +376,7 @@ function loadEdits(){
 }
 function recordEdit(c){
   edits[c.id]={branch:c.branch,saleDate:c.saleDate||'',name:c.name||'',code:c.code||'',
-    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',surgeryDate:c.surgeryDate||'',cardDate:c.cardDate||'',at:Date.now()};
+    status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,note:c.note||'',surgeryDate:c.surgeryDate||'',cardDate:c.cardDate||'',cbSocial:!!c.cbSocial,cbWeb:!!c.cbWeb,at:Date.now()};
   saveEdits(); updateEditBtn();
 }
 function updateEditBtn(){
@@ -387,9 +387,9 @@ function updateEditBtn(){
 function exportEdits(){
   const list=Object.values(edits); if(!list.length){toast('目前沒有修改');return;}
   const yn=v=>v?'是':'否';
-  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','手術日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','開卡日','備註'],
-    ...list.map(e=>[e.branch,e.saleDate,e.surgeryDate||'',e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.cardDate||'',e.note])]);
-  ws['!cols']=[6,11,11,10,12,10,6,6,8,30].map(w=>({wch:w}));
+  const ws=XLSX.utils.aoa_to_sheet([['分院','銷售日','手術日','顧客姓名','顧客代碼','狀態','術前','術後','櫃檯開卡','開卡日','已上社群','已上官網','備註'],
+    ...list.map(e=>[e.branch,e.saleDate,e.surgeryDate||'',e.name,e.code,e.status,yn(e.cbPre),yn(e.cbPost),yn(e.card),e.cardDate||'',yn(e.cbSocial),yn(e.cbWeb),e.note])]);
+  ws['!cols']=[6,11,11,10,12,10,6,6,8,11,8,8,30].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'總部修改');
   XLSX.writeFile(wb,`口碑案例_總部修改_${NOW.getFullYear()}${pad(NOW.getMonth()+1)}${pad(NOW.getDate())}.xlsx`);
   notice('📤 已匯出修改',`<div class="notice-list">共 <b>${list.length}</b> 筆修改</div>
@@ -578,7 +578,7 @@ function renderCases(){
   if(S.layout==='list'){
     $('#content').innerHTML=`<div class="table-wrap"><table class="case-table"><thead><tr>
       <th class="thc">術前</th><th class="thc">術後</th><th>#</th><th>銷售日</th><th class="th-sd">手術日</th><th>顧客姓名</th><th>顧客代碼</th>
-      <th>授權等級</th><th class="thr">折讓金額</th><th>分院</th><th>諮詢師</th><th>狀態</th><th class="thc">櫃檯開卡</th>
+      <th>授權等級</th><th class="thr">折讓金額</th><th>分院</th><th>諮詢師</th><th>狀態</th><th class="thc">櫃檯開卡</th><th class="thc">已上社群</th><th class="thc">已上官網</th>
       </tr></thead><tbody>${list.length?list.map((c,i)=>`<tr data-open="${c.id}" class="${c.status==='取消'?'is-cancel':''}">
         <td class="tdc">${cb(c,'cbPre')}</td><td class="tdc">${cb(c,'cbPost','cb-post')}</td>
         <td class="mono" style="color:var(--text3);font-size:10px">${i+1}</td>
@@ -591,8 +591,8 @@ function renderCases(){
         <td style="font-size:11px;color:var(--text2)">${c.branch}</td>
         <td style="font-size:11px">${esc(c.consultant||'—')}</td>
         <td>${statusBadge(c.status)}</td>
-        <td class="tdc">${cb(c,'card')}${c.cardDate?`<div class="mono" style="font-size:10px;color:var(--text2)">${c.cardDate.slice(5).replace('-','/')}</div>`:''}</td>
-      </tr>`).join(''):`<tr><td colspan="13"><div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div></td></tr>`}
+        <td class="tdc">${cb(c,'card')}${c.cardDate?`<div class="mono" style="font-size:10px;color:var(--text2)">${c.cardDate.slice(5).replace('-','/')}</div>`:''}</td><td class="tdc">${cb(c,'cbSocial')}</td><td class="tdc">${cb(c,'cbWeb')}</td>
+      </tr>`).join(''):`<tr><td colspan="15"><div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div></td></tr>`}
       </tbody></table></div>`;
   } else {
     const flag=(on,l,cls='')=>`<span class="flag ${on?'on':''} ${cls}">${on?'✓':'—'} ${l}</span>`;
@@ -604,7 +604,7 @@ function renderCases(){
           銷售 <span class="mono">${c.saleDate||'未填'}</span>　手術 ${c.surgeryDate?`<span class="mono sd-tag">${c.surgeryDate}</span>`:'<span class="mono">—</span>'}<br>
           折讓 <span class="mono">$${fmt(c.discount)}</span>
         </div>
-        <div class="dc-flags">${flag(c.cbPre,'術前')}${flag(c.cbPost,'術後','post')}</div>
+        <div class="dc-flags">${flag(c.cbPre,'術前')}${flag(c.cbPost,'術後','post')}${flag(c.cbSocial,'已上社群')}${flag(c.cbWeb,'已上官網')}</div>
       </div>
       <div class="dc-foot">${statusBadge(c.status)}<label><input type="checkbox" class="cb" data-flag="card" data-id="${c.id}" ${c.card?'checked':''} ${ro}> 櫃檯開卡${c.cardDate?` <span class="mono" style="font-size:10px">${c.cardDate.slice(5).replace('-','/')}</span>`:''}</label></div>
     </div>`).join('')}</div>`:`<div class="empty"><span class="empty-ico">📭</span><p>${emptyMsg}</p></div>`;
@@ -828,7 +828,7 @@ function openCase(id){
       <div class="fg fg-full"><label>狀態</label><select name="status" ${fdis}>${opt(STATUSES,d.status||'進行中')}</select></div>
     </div>
     <div class="sec-lbl">素材與開卡</div>
-    <div class="checks">${ck('cbPre','術前')}${ck('cbPost','術後')}${ck('card','櫃檯已開卡')}</div>
+    <div class="checks">${ck('cbPre','術前')}${ck('cbPost','術後')}${ck('card','櫃檯已開卡')}${ck('cbSocial','已上社群')}${ck('cbWeb','已上官網')}</div>
     <div class="fg"><label>開卡日</label><input type="date" name="cardDate" value="${d.cardDate||''}" ${fdis}></div>
     <div class="fg"><label>備註</label><textarea name="note" ${fdis}>${esc(d.note||'')}</textarea></div>
     ${flagOnly?'<p class="hint">修改會先存在這台電腦。改完請按上方「📤 匯出修改」，把檔案交給管理者匯入發佈。</p>':''}
@@ -847,7 +847,7 @@ function openCase(id){
     root.querySelector('[data-save]').addEventListener('click',()=>{
       const f=new FormData(root.querySelector('#case-form'));
       Object.assign(c,{surgeryDate:String(f.get('surgeryDate')||''),status:String(f.get('status')||'進行中'),cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),
-        card:!!f.get('card')||!!f.get('cardDate'),cardDate:String(f.get('cardDate')||''),note:String(f.get('note')||'').trim()});
+        card:!!f.get('card')||!!f.get('cardDate'),cardDate:String(f.get('cardDate')||''),cbSocial:!!f.get('cbSocial'),cbWeb:!!f.get('cbWeb'),note:String(f.get('note')||'').trim()});
       applyRules(c); recordEdit(c); ov.close(); render(); toast('✓ 已暫存，記得按「📤 匯出修改」');
     });
     return;
@@ -865,7 +865,7 @@ function openCase(id){
     const v=k=>String(f.get(k)||'').trim();
     const rec={branch:v('branch'),consultant:v('consultant'),saleDate:v('saleDate'),surgeryDate:v('surgeryDate'),
       name:v('name'),code:v('code'),grade:v('grade'),discount:Math.max(0,Math.round(+v('discount')||0)),
-      status:v('status')||'進行中',cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),card:!!f.get('card')||!!v('cardDate'),cardDate:v('cardDate'),note:v('note')};
+      status:v('status')||'進行中',cbPre:!!f.get('cbPre'),cbPost:!!f.get('cbPost'),card:!!f.get('card')||!!v('cardDate'),cardDate:v('cardDate'),cbSocial:!!f.get('cbSocial'),cbWeb:!!f.get('cbWeb'),note:v('note')};
     if(!rec.name&&!rec.code){toast('顧客姓名與顧客代碼至少填一個');return;}
     const k=caseKey(rec), dup=cases.find(x=>x.id!==(c&&c.id)&&caseKey(x)===k);
     if(dup&&!confirm('已經有一筆「分院＋顧客＋銷售日」相同的案例，仍要儲存嗎？'))return;
@@ -1129,7 +1129,7 @@ async function publish(){
   if(missing.length){notice('還不能發佈',`<p class="notice-sub">這些帳號還沒設定密碼：<b>${missing.join('、')}</b><br>請先按「🔑 設定帳號密碼」。</p>`);return;}
   const updatedAt=new Date().toISOString();
   const strip=c=>({id:c.id,branch:c.branch,saleDate:c.saleDate||'',surgeryDate:c.surgeryDate||'',name:c.name||'',code:c.code||'',
-    grade:c.grade||'',discount:c.discount||0,consultant:c.consultant||'',status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,cardDate:c.cardDate||'',note:c.note||''});
+    grade:c.grade||'',discount:c.discount||0,consultant:c.consultant||'',status:c.status||'',cbPre:!!c.cbPre,cbPost:!!c.cbPost,card:!!c.card,cardDate:c.cardDate||'',cbSocial:!!c.cbSocial,cbWeb:!!c.cbWeb,note:c.note||''});
   const anon=cases.map(c=>({branch:c.branch,saleDate:c.saleDate||'',grade:c.grade||'',discount:c.discount||0,
     consultant:c.consultant||'',status:c.status||'',card:!!c.card,cbPre:!!c.cbPre,cbPost:!!c.cbPost}));
   const out={v:1,iter:ITER,updatedAt,accounts:{}};
@@ -1164,6 +1164,8 @@ const FIELD_KEYS=[
   ['card',['開卡','櫃檯']],
   ['cbPre',['術前']],
   ['cbPost',['術後']],
+  ['cbSocial',['社群']],
+  ['cbWeb',['官網']],
   ['note',['備註','說明']],
 ];
 const caseKey=c=>`${c.branch}|${(c.code||c.name||'').trim()}|${c.saleDate||''}`;
@@ -1265,7 +1267,7 @@ async function importFiles(files){
           if(disc!=null)rec.discount=disc;
           else if(gradeRaw.includes('諮詢師無回饋'))rec.discount=0;
           else if(rec.grade)rec.discount=GRADE_AMT[rec.grade];
-          for(const f of ['card','cbPre','cbPost']){const raw=g(f); if(String(raw).trim()!=='')rec[f]=toBool(raw);}
+          for(const f of ['card','cbPre','cbPost','cbSocial','cbWeb']){const raw=g(f); if(String(raw).trim()!=='')rec[f]=toBool(raw);}
           const k=caseKey(rec);
           let c=index.get(k);
           if(c){
@@ -1307,11 +1309,11 @@ async function importFiles(files){
 //  匯出 XLSX / 截圖
 // ══════════════════════════════════════════
 function doExport(){
-  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','術前','術後','櫃檯開卡','開卡日','備註'];
+  const hdr=['分院','銷售日','手術日','顧客姓名','顧客代碼','授權等級','折讓金額','諮詢師','狀態','術前','術後','櫃檯開卡','開卡日','已上社群','已上官網','備註'];
   const toRow=c=>[c.branch,c.saleDate||'',c.surgeryDate||'',c.name||'',c.code||'',c.grade||'',c.discount||0,c.consultant||'',
-    c.status||'',c.cbPre?'✓':'',c.cbPost?'✓':'',c.card?'是':'否',c.cardDate||'',c.note||''];
+    c.status||'',c.cbPre?'✓':'',c.cbPost?'✓':'',c.card?'是':'否',c.cardDate||'',c.cbSocial?'✓':'',c.cbWeb?'✓':'',c.note||''];
   const sheet=list=>{const ws=XLSX.utils.aoa_to_sheet([hdr,...list.map(toRow)]);
-    ws['!cols']=[6,11,11,10,12,8,10,10,10,6,6,8,30].map(w=>({wch:w}));return ws;};
+    ws['!cols']=[6,11,11,10,12,8,10,10,10,6,6,8,11,8,8,30].map(w=>({wch:w}));return ws;};
   const all=sortCases([...cases]).sort((a,b)=>BRANCHES.indexOf(a.branch)-BRANCHES.indexOf(b.branch));
   const wb=XLSX.utils.book_new(), brs=myBranches();
   if(brs.length>1)XLSX.utils.book_append_sheet(wb,sheet(all),'全部');
