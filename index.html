@@ -506,7 +506,7 @@ function renderHeader(){
     h.push('<button class="btn" id="btn-pw">🔑 設定帳號密碼</button>');
     h.push('<button class="btn" id="btn-import">📥 匯入報表</button>');
     h.push('<button class="btn" id="btn-surg">📅 批次填手術日</button>');
-    h.push('<button class="btn" id="btn-photo">📸 批次勾術前術後</button>');
+    h.push('<button class="btn" id="btn-photo">📸 批次勾選（術前／術後／官網／社群）</button>');
     h.push('<button class="btn" id="btn-carddate">💳 批次填開卡日</button>');
     h.push('<button class="btn btn-primary" id="btn-add">＋ 新增案例</button>');
     h.push('<button class="btn btn-pub" id="btn-publish">🌐 發佈到網站</button>');
@@ -988,12 +988,13 @@ function parsePhotoLines(text){
   const out=[];
   text.split(/\r?\n/).forEach(raw=>{
     const line=raw.trim(); if(!line)return;
-    if(!line.includes('術前')&&!line.includes('術後'))return;   // 沒寫術前／術後的行略過
+    if(!/術前|術後|官網|社群/.test(line))return;   // 沒寫術前、術後、官網、社群的行略過
     const br=BRANCHES.find(b=>line.includes(b))||'';
     const pool=cases.filter(c=>!br||c.branch===br);
     const flat=line.replace(/\s/g,'');
     // 每個名字看「離它最近、在它前面」的術前／術後；前面沒有就看後面第一個
-    const kws=[...flat.matchAll(/術[前後]/g)].map(m=>({i:m.index,f:m[0]==='術後'?'cbPost':'cbPre'}));
+    const KW={術前:'cbPre',術後:'cbPost',官網:'cbWeb',社群:'cbSocial'};
+    const kws=[...flat.matchAll(/術[前後]|官網|社群/g)].map(m=>({i:m.index,f:KW[m[0]]}));
     const flagAt=i=>{const b=kws.filter(k=>k.i<i);return (b.length?b[b.length-1]:kws.find(k=>k.i>i)||kws[0]).f;};
     // 不要自動勾：取消／改期，或拍攝日還沒到
     let hold='', date='';   // date：這則的拍攝日（術前拍攝日通常就是手術日）
@@ -1018,7 +1019,7 @@ function parsePhotoLines(text){
     // 2. 找不到時：從「客名」「術前／術後」後面、「客…拍攝」中間抓名字，列出相近的
     if(!groups.length){
       const toks=new Set(), add=s=>s&&s.split(/[＋+、,，及和]/).forEach(t=>{t=t.trim();if(t.length>=2&&t.length<=4)toks.add(t);});
-      [new RegExp(`客名[:：]?(${CJK}{2,4})`),new RegExp(`術[前後](?:需拍攝)?[:：]?((?:${CJK}{2,4}[＋+、,，及和]?)+)`),new RegExp(`客(${CJK}{2,4}?)拍攝`)]
+      [new RegExp(`客名[:：]?(${CJK}{2,4})`),new RegExp(`(?:術[前後]|官網|社群)(?:需拍攝)?[:：]?((?:${CJK}{2,4}[＋+、,，及和]?)+)`),new RegExp(`客(${CJK}{2,4}?)拍攝`)]
         .forEach(re=>{const m=flat.match(re);if(m)add(m[1]);});
       toks.forEach(t=>{
         const fz=pool.map(c=>({c,s:nameScore(c.name,t)})).filter(x=>x.s>=1).sort((a,b)=>b.s-a.s||caseSort(a.c,b.c)).slice(0,6).map(x=>x.c);
@@ -1033,7 +1034,7 @@ function parsePhotoLines(text){
 function openPhotoBatch(){
   const ov=openOverlay(`<div class="modal" style="max-width:720px"><div class="modal-h"><span class="modal-t">📸 批次勾術前／術後</span><button class="btn btn-icon" data-close>✕</button></div>
   <div class="modal-b">
-    <p class="hint">把拍攝通知整段貼進來，一行一則。系統會找出<b>分院、術前或術後、顧客姓名</b>，例如：<br><code>11/2(一)巨蛋美加 眼袋術前 蕭美蓉＋羅桂香</code><br><code>11/23 1430@北屯美加有一眼袋術前需拍攝，客名林家億</code></p>
+    <p class="hint">把拍攝通知整段貼進來，一行一則。系統會找出<b>分院、術前／術後／官網／社群、顧客姓名</b>，例如：<br><code>11/2(一)巨蛋美加 眼袋術前 蕭美蓉＋羅桂香</code><br><code>11/23 1430@北屯美加有一眼袋術前需拍攝，客名林家億</code></p>
     <textarea id="pb-text" style="width:100%;min-height:140px;font:inherit"></textarea>
     <div id="pb-prev" style="margin-top:10px"></div>
   </div>
@@ -1045,7 +1046,7 @@ function openPhotoBatch(){
     rows=parsePhotoLines(root.querySelector('#pb-text').value);
     let k=0;
     const body=rows.map(r=>{
-      const act=f=>f==='cbPost'?'<b style="color:var(--pink,#C2185B)">術後</b>':'<b>術前</b>';
+      const act=f=>({cbPost:'<b style="color:var(--pink,#C2185B)">術後</b>',cbPre:'<b>術前</b>',cbWeb:'<b style="color:#6A3FB5">已上官網</b>',cbSocial:'<b style="color:#6A3FB5">已上社群</b>'})[f];
       if(!r.groups.length)return `<tr><td>${esc(r.line)}</td><td>—</td><td>${red(`✕ 找不到顧客${r.br?`（${r.br}）`:''}，請手動勾`)}</td></tr>`;
       return r.groups.map((g,gi)=>{
         g.idx=k++;
